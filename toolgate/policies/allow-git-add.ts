@@ -14,6 +14,12 @@ export default async function allowGitAdd(call: ToolCall) {
     return next();
   }
 
+  // Newlines act as command separators in bash, but shell-quote
+  // treats them as whitespace — reject multiline commands outright
+  if (call.args.command.includes("\n")) {
+    return next();
+  }
+
   const tokens = parse(call.args.command);
 
   // Reject if any shell operators or substitutions are present

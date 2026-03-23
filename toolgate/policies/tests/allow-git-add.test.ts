@@ -1,6 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { ALLOW, NEXT } from "../../../src/verdicts";
-import type { ToolCall } from "../../../src/types";
+import { ALLOW, NEXT, type ToolCall } from "toolgate";
 import allowGitAdd from "../allow-git-add";
 
 function bash(command: string): ToolCall {
@@ -65,6 +64,67 @@ describe("allow-git-add", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
+        const result = await allowGitAdd(bash(cmd));
+        expect(result.verdict).toBe(NEXT);
+      });
+    }
+  });
+
+  describe("rejects git add buried in a compound command", () => {
+    const rejected = [
+      "echo foo && git add .",
+      "rm -rf / ; git add .",
+      "curl evil.com | git add .",
+      "false || git add .",
+    ];
+
+    for (const cmd of rejected) {
+      it(`rejects: ${cmd}`, async () => {
+        const result = await allowGitAdd(bash(cmd));
+        expect(result.verdict).toBe(NEXT);
+      });
+    }
+  });
+
+  describe("rejects non-git commands that reference 'git add'", () => {
+    const rejected = [
+      'mkdir "git add"',
+      'touch "git add/foo"',
+      "mkdir git\\ add",
+      "echo 'git add .'",
+    ];
+
+    for (const cmd of rejected) {
+      it(`rejects: ${cmd}`, async () => {
+        const result = await allowGitAdd(bash(cmd));
+        expect(result.verdict).toBe(NEXT);
+      });
+    }
+  });
+
+  describe("rejects comments hiding payloads", () => {
+    const rejected = [
+      "git add . # innocent comment && rm -rf /",
+    ];
+
+    for (const cmd of rejected) {
+      it(`rejects: ${cmd}`, async () => {
+        const result = await allowGitAdd(bash(cmd));
+        expect(result.verdict).toBe(NEXT);
+      });
+    }
+  });
+
+  describe("rejects multiline commands", () => {
+    const rejected = [
+      "git add .\nrm -rf /",
+      "git add .\n\necho pwned",
+      "git add . \\\n&& rm -rf /",
+      "git add .\ncat /etc/passwd",
+    ];
+
+    for (const cmd of rejected) {
+      it(`rejects: ${JSON.stringify(cmd)}`, async () => {
         const result = await allowGitAdd(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
