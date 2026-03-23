@@ -1,4 +1,4 @@
-import { deny, next, type ToolCall } from "../../src";
+import { deny, next, type Policy } from "../../src";
 import { parse } from "shell-quote";
 
 const GLOBAL_PLANS_DIR = "/.claude/plans";
@@ -6,38 +6,43 @@ const GLOBAL_PLANS_DIR = "/.claude/plans";
 /**
  * Deny plan writes to ~/.claude/plans/ and steer Claude to use the project's docs/ folder instead.
  */
-export default async function redirectPlansToProject(call: ToolCall) {
-  if (!call.context.projectRoot) {
-    return next();
-  }
-
-  const projectRoot = call.context.projectRoot;
-  const docsDir = `${projectRoot}/docs`;
-
-  if (call.tool === "Write" || call.tool === "Edit") {
-    const filePath = call.args.file_path;
-    if (typeof filePath !== "string") return next();
-    if (isGlobalPlanPath(filePath)) {
-      return deny(
-        `Plan files should be saved in the project, not globally. Write to ${docsDir}/ instead of ${filePath}`,
-      );
+const redirectPlansToProject: Policy = {
+  name: "Redirect plans to project",
+  description: "Blocks plan writes to ~/.claude/plans/ and suggests project docs/ instead",
+  handler: async (call) => {
+    if (!call.context.projectRoot) {
+      return next();
     }
-    return next();
-  }
 
-  if (call.tool === "Bash") {
-    const command = call.args.command;
-    if (typeof command !== "string") return next();
-    const target = findRedirectToGlobalPlans(command);
-    if (target) {
-      return deny(
-        `Plan files should be saved in the project, not globally. Write to ${docsDir}/ instead of ${target}`,
-      );
+    const projectRoot = call.context.projectRoot;
+    const docsDir = `${projectRoot}/docs`;
+
+    if (call.tool === "Write" || call.tool === "Edit") {
+      const filePath = call.args.file_path;
+      if (typeof filePath !== "string") return next();
+      if (isGlobalPlanPath(filePath)) {
+        return deny(
+          `Plan files should be saved in the project, not globally. Write to ${docsDir}/ instead of ${filePath}`,
+        );
+      }
+      return next();
     }
-  }
 
-  return next();
-}
+    if (call.tool === "Bash") {
+      const command = call.args.command;
+      if (typeof command !== "string") return next();
+      const target = findRedirectToGlobalPlans(command);
+      if (target) {
+        return deny(
+          `Plan files should be saved in the project, not globally. Write to ${docsDir}/ instead of ${target}`,
+        );
+      }
+    }
+
+    return next();
+  },
+};
+export default redirectPlansToProject;
 
 function isGlobalPlanPath(filePath: string): boolean {
   // Match any path containing /.claude/plans/

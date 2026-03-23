@@ -22,7 +22,7 @@ describe("allow-bun-test", () => {
 
     for (const cmd of allowed) {
       it(`allows: ${cmd}`, async () => {
-        const result = await allowBunTest(bash(cmd));
+        const result = await allowBunTest.handler(bash(cmd));
         expect(result.verdict).toBe(ALLOW);
       });
     }
@@ -39,7 +39,7 @@ describe("allow-bun-test", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowBunTest(bash(cmd));
+        const result = await allowBunTest.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -54,7 +54,7 @@ describe("allow-bun-test", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowBunTest(bash(cmd));
+        const result = await allowBunTest.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -68,7 +68,7 @@ describe("allow-bun-test", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${JSON.stringify(cmd)}`, async () => {
-        const result = await allowBunTest(bash(cmd));
+        const result = await allowBunTest.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -82,7 +82,7 @@ describe("allow-bun-test", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowBunTest(bash(cmd));
+        const result = await allowBunTest.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -99,7 +99,7 @@ describe("allow-bun-test", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowBunTest(bash(cmd));
+        const result = await allowBunTest.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -111,7 +111,7 @@ describe("allow-bun-test", () => {
       args: {},
       context: { cwd: "/tmp", env: {}, projectRoot: null },
     };
-    const result = await allowBunTest(call);
+    const result = await allowBunTest.handler(call);
     expect(result.verdict).toBe(NEXT);
   });
 });

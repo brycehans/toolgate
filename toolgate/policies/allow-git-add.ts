@@ -1,17 +1,22 @@
-import { allow, next, type ToolCall } from "../../src";
+import { allow, next, type Policy } from "../../src";
 import { safeBashTokens } from "./parse-bash";
 
 /**
  * Allow simple `git add` commands. Rejects compound commands,
  * shell substitutions, and multiline inputs.
  */
-export default async function allowGitAdd(call: ToolCall) {
-  const tokens = safeBashTokens(call);
-  if (!tokens) return next();
+const allowGitAdd: Policy = {
+  name: "Allow git add",
+  description: "Permits simple git add commands without chaining or substitution",
+  handler: async (call) => {
+    const tokens = safeBashTokens(call);
+    if (!tokens) return next();
 
-  if (tokens[0] === "git" && tokens[1] === "add") {
-    return allow();
-  }
+    if (tokens[0] === "git" && tokens[1] === "add") {
+      return allow();
+    }
 
-  return next();
-}
+    return next();
+  },
+};
+export default allowGitAdd;

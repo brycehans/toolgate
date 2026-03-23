@@ -17,61 +17,61 @@ function grep(path: string | undefined, projectRoot: string | null = PROJECT): T
 describe("allow-grep-in-project", () => {
   describe("allows grep within project", () => {
     it("allows explicit path in project", async () => {
-      const result = await allowGrepInProject(grep("/home/user/project/src"));
+      const result = await allowGrepInProject.handler(grep("/home/user/project/src"));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows project root as path", async () => {
-      const result = await allowGrepInProject(grep("/home/user/project"));
+      const result = await allowGrepInProject.handler(grep("/home/user/project"));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows nested path", async () => {
-      const result = await allowGrepInProject(grep("/home/user/project/a/b/c"));
+      const result = await allowGrepInProject.handler(grep("/home/user/project/a/b/c"));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows when no path specified (defaults to cwd)", async () => {
-      const result = await allowGrepInProject(grep(undefined));
+      const result = await allowGrepInProject.handler(grep(undefined));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows relative path within project", async () => {
-      const result = await allowGrepInProject(grep("src/utils"));
+      const result = await allowGrepInProject.handler(grep("src/utils"));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows relative path with dot prefix", async () => {
-      const result = await allowGrepInProject(grep("./toolgate/policies"));
+      const result = await allowGrepInProject.handler(grep("./toolgate/policies"));
       expect(result.verdict).toBe(ALLOW);
     });
   });
 
   describe("rejects grep outside project", () => {
     it("rejects path outside project", async () => {
-      const result = await allowGrepInProject(grep("/etc"));
+      const result = await allowGrepInProject.handler(grep("/etc"));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("rejects sibling directory", async () => {
-      const result = await allowGrepInProject(grep("/home/user/other-project"));
+      const result = await allowGrepInProject.handler(grep("/home/user/other-project"));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("rejects prefix trick", async () => {
-      const result = await allowGrepInProject(grep("/home/user/project-evil/src"));
+      const result = await allowGrepInProject.handler(grep("/home/user/project-evil/src"));
       expect(result.verdict).toBe(NEXT);
     });
   });
 
   describe("passes through when no project root", () => {
     it("with explicit path", async () => {
-      const result = await allowGrepInProject(grep("/home/user/project/src", null));
+      const result = await allowGrepInProject.handler(grep("/home/user/project/src", null));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("with no path", async () => {
-      const result = await allowGrepInProject(grep(undefined, null));
+      const result = await allowGrepInProject.handler(grep(undefined, null));
       expect(result.verdict).toBe(NEXT);
     });
   });
@@ -83,7 +83,7 @@ describe("allow-grep-in-project", () => {
         args: { pattern: "foo" },
         context: { cwd: "/tmp", env: {}, projectRoot: PROJECT },
       };
-      const result = await allowGrepInProject(call);
+      const result = await allowGrepInProject.handler(call);
       expect(result.verdict).toBe(NEXT);
     });
   });
@@ -94,7 +94,7 @@ describe("allow-grep-in-project", () => {
       args: { command: "grep foo" },
       context: { cwd: PROJECT, env: {}, projectRoot: PROJECT },
     };
-    const result = await allowGrepInProject(call);
+    const result = await allowGrepInProject.handler(call);
     expect(result.verdict).toBe(NEXT);
   });
 });

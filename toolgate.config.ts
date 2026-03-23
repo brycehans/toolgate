@@ -16,6 +16,7 @@ import allowSearchInProject from "./toolgate/policies/allow-search-in-project";
 import allowFindInProject from "./toolgate/policies/allow-find-in-project";
 import allowPlanInProject from "./toolgate/policies/allow-plan-in-project";
 import allowWebFetchClaude from "./toolgate/policies/allow-webfetch-claude";
+import allowTaskCreate from "./toolgate/policies/allow-task-create";
 
 export default definePolicy([
   denyGitAddAndCommit,
@@ -34,4 +35,5 @@ export default definePolicy([
   allowFindInProject,
   allowPlanInProject,
   allowWebFetchClaude,
+  allowTaskCreate,
 ]);

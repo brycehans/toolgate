@@ -25,7 +25,7 @@ describe("allow-git-diff", () => {
 
     for (const cmd of allowed) {
       it(`allows: ${cmd}`, async () => {
-        const result = await allowGitDiff(bash(cmd));
+        const result = await allowGitDiff.handler(bash(cmd));
         expect(result.verdict).toBe(ALLOW);
       });
     }
@@ -40,7 +40,7 @@ describe("allow-git-diff", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${JSON.stringify(cmd)}`, async () => {
-        const result = await allowGitDiff(bash(cmd));
+        const result = await allowGitDiff.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -55,7 +55,7 @@ describe("allow-git-diff", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowGitDiff(bash(cmd));
+        const result = await allowGitDiff.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }

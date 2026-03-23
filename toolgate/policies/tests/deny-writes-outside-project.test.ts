@@ -29,34 +29,34 @@ function bash(command: string, projectRoot: string | null = "/home/user/project"
 describe("deny-writes-outside-project", () => {
   describe("allows writes within project root", () => {
     it("allows Write to file in project", async () => {
-      const result = await denyWritesOutsideProject(write("/home/user/project/src/foo.ts"));
+      const result = await denyWritesOutsideProject.handler(write("/home/user/project/src/foo.ts"));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("allows Edit to file in project", async () => {
-      const result = await denyWritesOutsideProject(edit("/home/user/project/src/foo.ts"));
+      const result = await denyWritesOutsideProject.handler(edit("/home/user/project/src/foo.ts"));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("allows nested paths", async () => {
-      const result = await denyWritesOutsideProject(write("/home/user/project/a/b/c/d.ts"));
+      const result = await denyWritesOutsideProject.handler(write("/home/user/project/a/b/c/d.ts"));
       expect(result.verdict).toBe(NEXT);
     });
   });
 
   describe("denies writes outside project root", () => {
     it("denies Write to /etc/passwd", async () => {
-      const result = await denyWritesOutsideProject(write("/etc/passwd"));
+      const result = await denyWritesOutsideProject.handler(write("/etc/passwd"));
       expect(result.verdict).toBe(DENY);
     });
 
     it("denies Edit to home directory file", async () => {
-      const result = await denyWritesOutsideProject(edit("/home/user/.bashrc"));
+      const result = await denyWritesOutsideProject.handler(edit("/home/user/.bashrc"));
       expect(result.verdict).toBe(DENY);
     });
 
     it("denies Write to sibling directory", async () => {
-      const result = await denyWritesOutsideProject(write("/home/user/other-project/foo.ts"));
+      const result = await denyWritesOutsideProject.handler(write("/home/user/other-project/foo.ts"));
       expect(result.verdict).toBe(DENY);
     });
   });
@@ -64,14 +64,14 @@ describe("deny-writes-outside-project", () => {
   describe("handles path traversal tricks", () => {
     it("denies path that is a prefix but not a subdirectory", async () => {
       // /home/user/project-evil is not inside /home/user/project
-      const result = await denyWritesOutsideProject(write("/home/user/project-evil/foo.ts"));
+      const result = await denyWritesOutsideProject.handler(write("/home/user/project-evil/foo.ts"));
       expect(result.verdict).toBe(DENY);
     });
   });
 
   describe("passes through when no project root", () => {
     it("passes through Write with no projectRoot", async () => {
-      const result = await denyWritesOutsideProject(write("/etc/passwd", null));
+      const result = await denyWritesOutsideProject.handler(write("/etc/passwd", null));
       expect(result.verdict).toBe(NEXT);
     });
   });
@@ -83,60 +83,60 @@ describe("deny-writes-outside-project", () => {
         args: { file_path: "/etc/passwd" },
         context: { cwd: "/tmp", env: {}, projectRoot: "/home/user/project" },
       };
-      const result = await denyWritesOutsideProject(call);
+      const result = await denyWritesOutsideProject.handler(call);
       expect(result.verdict).toBe(NEXT);
     });
   });
 
   describe("denies Bash redirects outside project", () => {
     it("denies cat > /outside/path", async () => {
-      const result = await denyWritesOutsideProject(bash("cat > /etc/passwd"));
+      const result = await denyWritesOutsideProject.handler(bash("cat > /etc/passwd"));
       expect(result.verdict).toBe(DENY);
     });
 
     it("denies cat >> /outside/path (append)", async () => {
-      const result = await denyWritesOutsideProject(bash("cat >> /home/user/.bashrc"));
+      const result = await denyWritesOutsideProject.handler(bash("cat >> /home/user/.bashrc"));
       expect(result.verdict).toBe(DENY);
     });
 
     it("denies heredoc redirect outside project", async () => {
-      const result = await denyWritesOutsideProject(
+      const result = await denyWritesOutsideProject.handler(
         bash("cat > /home/user/.claude/plans/evil.md << 'EOF'\nsome content\nEOF"),
       );
       expect(result.verdict).toBe(DENY);
     });
 
     it("denies mkdir -p && cat > /outside/path", async () => {
-      const result = await denyWritesOutsideProject(
+      const result = await denyWritesOutsideProject.handler(
         bash("mkdir -p /tmp/foo && cat > /tmp/foo/bar.md"),
       );
       expect(result.verdict).toBe(DENY);
     });
 
     it("denies tee writing outside project", async () => {
-      const result = await denyWritesOutsideProject(bash("echo hi | tee /etc/evil"));
+      const result = await denyWritesOutsideProject.handler(bash("echo hi | tee /etc/evil"));
       expect(result.verdict).toBe(DENY);
     });
 
     it("allows redirect inside project", async () => {
-      const result = await denyWritesOutsideProject(
+      const result = await denyWritesOutsideProject.handler(
         bash("echo hello > /home/user/project/output.txt"),
       );
       expect(result.verdict).toBe(NEXT);
     });
 
     it("allows Bash with no redirects", async () => {
-      const result = await denyWritesOutsideProject(bash("echo hello"));
+      const result = await denyWritesOutsideProject.handler(bash("echo hello"));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("allows Bash with no projectRoot", async () => {
-      const result = await denyWritesOutsideProject(bash("cat > /etc/passwd", null));
+      const result = await denyWritesOutsideProject.handler(bash("cat > /etc/passwd", null));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("denies redirect to sibling project directory", async () => {
-      const result = await denyWritesOutsideProject(
+      const result = await denyWritesOutsideProject.handler(
         bash("echo x > /home/user/project-evil/foo.ts"),
       );
       expect(result.verdict).toBe(DENY);

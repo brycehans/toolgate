@@ -1,6 +1,6 @@
 # toolgate
 
-A policy engine for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) tool permissions. Define middleware policies that automatically allow, deny, or prompt for each tool call.
+A policy engine for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) tool permissions. Define policies that automatically allow, deny, or prompt for each tool call.
 
 ## Why
 
@@ -26,7 +26,7 @@ This creates a `toolgate.config.ts` and registers a `PreToolUse` hook in `~/.cla
 
 ## Configuration
 
-Policies are defined in `toolgate.config.ts` (project root or `~/.claude/` for global). A config is an array of middleware functions:
+Policies are defined in `toolgate.config.ts` (project root or `~/.claude/` for global). A config is an array of `Policy` objects:
 
 ```ts
 import { definePolicy } from "toolgate";
@@ -43,18 +43,23 @@ Project policies run first, then global. The first non-`next()` verdict wins.
 
 ## Writing Policies
 
-A policy is an async function that inspects a tool call and returns a verdict:
+A policy is an object with `name`, `description`, and an async `handler` function:
 
 ```ts
-import { allow, deny, next, type ToolCall } from "toolgate";
+import { allow, deny, next, type Policy } from "toolgate";
 
-export default async function denyRmRf(call: ToolCall) {
-  if (call.tool !== "Bash") return next();
-  if (call.args.command?.includes("rm -rf")) {
-    return deny("Destructive command blocked");
-  }
-  return next();
-}
+const denyRmRf: Policy = {
+  name: "Deny rm -rf",
+  description: "Blocks destructive rm -rf commands",
+  handler: async (call) => {
+    if (call.tool !== "Bash") return next();
+    if (call.args.command?.includes("rm -rf")) {
+      return deny("Destructive command blocked");
+    }
+    return next();
+  },
+};
+export default denyRmRf;
 ```
 
 ### Verdicts
@@ -67,7 +72,7 @@ export default async function denyRmRf(call: ToolCall) {
 
 ### ToolCall
 
-Each policy receives a `ToolCall` with:
+Each policy handler receives a `ToolCall` with:
 
 - `tool` — tool name (`"Bash"`, `"Read"`, `"Write"`, `"Edit"`, etc.)
 - `args` — tool arguments (e.g. `{ command: "git status" }` for Bash)
@@ -85,27 +90,34 @@ When writing policies for Bash commands, use [`shell-quote`](https://www.npmjs.c
 
 See [`toolgate/policies/allow-git-add.ts`](toolgate/policies/allow-git-add.ts) for a hardened example.
 
-## Testing
-
-Dry-run a tool call against your policies:
+## CLI
 
 ```bash
+# Dry-run a tool call against your policies
 toolgate test Bash '{"command": "git add ."}'
 # → ALLOW
 
-toolgate test Bash '{"command": "git add . && rm -rf /"}'
-# → ASK
+# Show which policy matched and why
+toolgate test --why Bash '{"command": "git add ."}'
+# → ALLOW
+#   why: Allow git add (index 4)
+#   description: Permits simple git add commands without chaining or substitution
+
+# List all loaded policies
+toolgate list
 ```
 
 ## Example Policies
 
-| Policy | Allows |
-|--------|--------|
-| `allow-exact-commands` | Exact matches: `git status`, `git diff`, etc. |
-| `allow-git-add` | `git add` with safe arguments |
-| `allow-bun-test` | `bun test` with safe arguments |
-| `allow-read-in-project` | `Read` tool for files within project root |
-| `allow-explore-in-project` | `Explore` agent within project root |
+| Policy | Description |
+|--------|-------------|
+| `allow-git-add` | Permits `git add` with safe arguments |
+| `allow-bun-test` | Permits `bun test` with safe arguments |
+| `allow-read-in-project` | Permits `Read` tool for files within project root |
+| `allow-explore-in-project` | Permits `Explore` agent within project root |
+| `deny-writes-outside-project` | Blocks writes targeting paths outside the project |
+| `deny-git-add-and-commit` | Forces `git add` and `git commit` into separate steps |
+| `allow-task-create` | Permits `TaskCreate` tool calls for task tracking |
 
 ## License
 

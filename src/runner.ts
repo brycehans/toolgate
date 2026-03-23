@@ -64,8 +64,8 @@ export function buildHookResponse(verdict: VerdictResult): HookResponse {
 export async function run(): Promise<void> {
   const input: HookInput = JSON.parse(await Bun.stdin.text())
   const call = buildToolCall(input)
-  const middlewares = await loadConfigs(call.context.cwd)
-  const verdict = await runPolicy(middlewares, call)
+  const policies = await loadConfigs(call.context.cwd)
+  const verdict = await runPolicy(policies, call)
   const response = buildHookResponse(verdict)
   process.stdout.write(JSON.stringify(response))
   process.exit(0)

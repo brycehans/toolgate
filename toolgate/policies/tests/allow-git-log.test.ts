@@ -26,7 +26,7 @@ describe("allow-git-log", () => {
 
     for (const cmd of allowed) {
       it(`allows: ${cmd}`, async () => {
-        const result = await allowGitLog(bash(cmd));
+        const result = await allowGitLog.handler(bash(cmd));
         expect(result.verdict).toBe(ALLOW);
       });
     }
@@ -43,7 +43,7 @@ describe("allow-git-log", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowGitLog(bash(cmd));
+        const result = await allowGitLog.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -57,7 +57,7 @@ describe("allow-git-log", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowGitLog(bash(cmd));
+        const result = await allowGitLog.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -71,7 +71,7 @@ describe("allow-git-log", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${JSON.stringify(cmd)}`, async () => {
-        const result = await allowGitLog(bash(cmd));
+        const result = await allowGitLog.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -86,7 +86,7 @@ describe("allow-git-log", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowGitLog(bash(cmd));
+        const result = await allowGitLog.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -98,7 +98,7 @@ describe("allow-git-log", () => {
       args: {},
       context: { cwd: "/tmp", env: {}, projectRoot: null },
     };
-    const result = await allowGitLog(call);
+    const result = await allowGitLog.handler(call);
     expect(result.verdict).toBe(NEXT);
   });
 });

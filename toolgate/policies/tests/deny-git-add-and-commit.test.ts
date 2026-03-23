@@ -23,7 +23,7 @@ describe("deny-git-add-and-commit", () => {
 
     for (const cmd of denied) {
       it(`denies: ${JSON.stringify(cmd)}`, async () => {
-        const result = await denyGitAddAndCommit(bash(cmd));
+        const result = await denyGitAddAndCommit.handler(bash(cmd));
         expect(result.verdict).toBe(DENY);
       });
     }
@@ -38,7 +38,7 @@ describe("deny-git-add-and-commit", () => {
 
     for (const cmd of allowed) {
       it(`passes through: ${cmd}`, async () => {
-        const result = await denyGitAddAndCommit(bash(cmd));
+        const result = await denyGitAddAndCommit.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -52,7 +52,7 @@ describe("deny-git-add-and-commit", () => {
 
     for (const cmd of allowed) {
       it(`passes through: ${cmd}`, async () => {
-        const result = await denyGitAddAndCommit(bash(cmd));
+        const result = await denyGitAddAndCommit.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -70,7 +70,7 @@ describe("deny-git-add-and-commit", () => {
 
     for (const cmd of denied) {
       it(`denies: ${JSON.stringify(cmd)}`, async () => {
-        const result = await denyGitAddAndCommit(bash(cmd));
+        const result = await denyGitAddAndCommit.handler(bash(cmd));
         expect(result.verdict).toBe(DENY);
       });
     }
@@ -85,7 +85,7 @@ describe("deny-git-add-and-commit", () => {
 
     for (const cmd of allowed) {
       it(`passes through: ${cmd}`, async () => {
-        const result = await denyGitAddAndCommit(bash(cmd));
+        const result = await denyGitAddAndCommit.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -97,7 +97,7 @@ describe("deny-git-add-and-commit", () => {
       args: {},
       context: { cwd: "/tmp", env: {}, projectRoot: null },
     };
-    const result = await denyGitAddAndCommit(call);
+    const result = await denyGitAddAndCommit.handler(call);
     expect(result.verdict).toBe(NEXT);
   });
 });

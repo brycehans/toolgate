@@ -1,39 +1,41 @@
-import type { Middleware, ToolCall, VerdictResult } from './types'
+import type { Policy, ToolCall, VerdictResult } from './types'
 import { isVerdictResult, next, NEXT } from './verdicts'
 
-export function definePolicy(middlewares: Middleware[]): Middleware[] {
-  return middlewares
+export function definePolicy(policies: Policy[]): Policy[] {
+  return policies
 }
 
 export interface TracedResult {
   result: VerdictResult
-  /** Index of the middleware that returned the verdict, or -1 if all returned next() */
+  /** Index of the policy that returned the verdict, or -1 if all returned next() */
   index: number
-  /** Name of the middleware function, if available */
+  /** Name of the policy, if available */
   name: string | null
+  /** Description of the policy, if available */
+  description: string | null
 }
 
-export async function runPolicy(middlewares: Middleware[], call: ToolCall): Promise<VerdictResult> {
-  const { result } = await runPolicyWithTrace(middlewares, call)
+export async function runPolicy(policies: Policy[], call: ToolCall): Promise<VerdictResult> {
+  const { result } = await runPolicyWithTrace(policies, call)
   return result
 }
 
-export async function runPolicyWithTrace(middlewares: Middleware[], call: ToolCall): Promise<TracedResult> {
-  for (let i = 0; i < middlewares.length; i++) {
-    const mw = middlewares[i]
-    const result = await mw(call)
+export async function runPolicyWithTrace(policies: Policy[], call: ToolCall): Promise<TracedResult> {
+  for (let i = 0; i < policies.length; i++) {
+    const policy = policies[i]
+    const result = await policy.handler(call)
 
     if (!isVerdictResult(result)) {
       throw new Error(
-        `toolgate: middleware[${i}] returned invalid verdict: ${JSON.stringify(result)}\n` +
-        `  Every middleware must return allow(), deny(), or next().`
+        `toolgate: policy[${i}] "${policy.name}" returned invalid verdict: ${JSON.stringify(result)}\n` +
+        `  Every policy handler must return allow(), deny(), or next().`
       )
     }
 
     if (result.verdict !== NEXT) {
-      return { result, index: i, name: mw.name || null }
+      return { result, index: i, name: policy.name, description: policy.description }
     }
   }
 
-  return { result: next(), index: -1, name: null }
+  return { result: next(), index: -1, name: null, description: null }
 }

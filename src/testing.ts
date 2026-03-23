@@ -1,4 +1,4 @@
-import type { Middleware, ToolCall } from './types'
+import type { Policy, ToolCall } from './types'
 import { runPolicy } from './policy'
 import { ALLOW, DENY, NEXT } from './verdicts'
 
@@ -15,7 +15,7 @@ const SYMBOL_TO_STRING = new Map<symbol, string>([
   [NEXT, 'ask'],
 ])
 
-export async function testPolicy(middlewares: Middleware[], cases: TestCase[]): Promise<void> {
+export async function testPolicy(policies: Policy[], cases: TestCase[]): Promise<void> {
   for (const tc of cases) {
     const call: ToolCall = {
       tool: tc.tool,
@@ -27,7 +27,7 @@ export async function testPolicy(middlewares: Middleware[], cases: TestCase[]): 
       },
     }
 
-    const result = await runPolicy(middlewares, call)
+    const result = await runPolicy(policies, call)
     const actual = SYMBOL_TO_STRING.get(result.verdict) ?? 'unknown'
 
     if (actual !== tc.expect) {

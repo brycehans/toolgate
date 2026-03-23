@@ -17,51 +17,51 @@ function plan(path: string | undefined, projectRoot: string | null = PROJECT): T
 describe("allow-plan-in-project", () => {
   describe("allows plan within project", () => {
     it("allows explicit path in project", async () => {
-      const result = await allowPlanInProject(plan("/home/user/project/src"));
+      const result = await allowPlanInProject.handler(plan("/home/user/project/src"));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows project root as path", async () => {
-      const result = await allowPlanInProject(plan("/home/user/project"));
+      const result = await allowPlanInProject.handler(plan("/home/user/project"));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows nested path", async () => {
-      const result = await allowPlanInProject(plan("/home/user/project/a/b/c"));
+      const result = await allowPlanInProject.handler(plan("/home/user/project/a/b/c"));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows when no path specified (defaults to cwd)", async () => {
-      const result = await allowPlanInProject(plan(undefined));
+      const result = await allowPlanInProject.handler(plan(undefined));
       expect(result.verdict).toBe(ALLOW);
     });
   });
 
   describe("rejects plan outside project", () => {
     it("rejects path outside project", async () => {
-      const result = await allowPlanInProject(plan("/etc"));
+      const result = await allowPlanInProject.handler(plan("/etc"));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("rejects sibling directory", async () => {
-      const result = await allowPlanInProject(plan("/home/user/other-project"));
+      const result = await allowPlanInProject.handler(plan("/home/user/other-project"));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("rejects prefix trick", async () => {
-      const result = await allowPlanInProject(plan("/home/user/project-evil/src"));
+      const result = await allowPlanInProject.handler(plan("/home/user/project-evil/src"));
       expect(result.verdict).toBe(NEXT);
     });
   });
 
   describe("passes through when no project root", () => {
     it("with explicit path", async () => {
-      const result = await allowPlanInProject(plan("/home/user/project/src", null));
+      const result = await allowPlanInProject.handler(plan("/home/user/project/src", null));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("with no path", async () => {
-      const result = await allowPlanInProject(plan(undefined, null));
+      const result = await allowPlanInProject.handler(plan(undefined, null));
       expect(result.verdict).toBe(NEXT);
     });
   });
@@ -73,7 +73,7 @@ describe("allow-plan-in-project", () => {
         args: { task: "implement feature" },
         context: { cwd: "/tmp", env: {}, projectRoot: PROJECT },
       };
-      const result = await allowPlanInProject(call);
+      const result = await allowPlanInProject.handler(call);
       expect(result.verdict).toBe(NEXT);
     });
   });
@@ -84,7 +84,7 @@ describe("allow-plan-in-project", () => {
       args: { command: "echo plan" },
       context: { cwd: PROJECT, env: {}, projectRoot: PROJECT },
     };
-    const result = await allowPlanInProject(call);
+    const result = await allowPlanInProject.handler(call);
     expect(result.verdict).toBe(NEXT);
   });
 });

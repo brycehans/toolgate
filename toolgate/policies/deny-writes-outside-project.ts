@@ -1,42 +1,47 @@
 import { parse } from "shell-quote";
-import { deny, next, type ToolCall } from "../../src";
+import { deny, next, type Policy } from "../../src";
 
 /**
  * Deny Write/Edit tool calls and Bash redirects that target files outside the project root.
  */
-export default async function denyWritesOutsideProject(call: ToolCall) {
-  if (!call.context.projectRoot) {
-    return next();
-  }
-
-  const projectRoot = call.context.projectRoot;
-
-  // Write and Edit: check file_path argument
-  if (call.tool === "Write" || call.tool === "Edit") {
-    const filePath = call.args.file_path;
-    if (typeof filePath !== "string") {
+const denyWritesOutsideProject: Policy = {
+  name: "Deny writes outside project",
+  description: "Blocks file writes and Bash redirects targeting paths outside the project root",
+  handler: async (call) => {
+    if (!call.context.projectRoot) {
       return next();
     }
-    if (!isInsideProject(filePath, projectRoot)) {
-      return deny(`Write blocked: ${filePath} is outside project root`);
-    }
-    return next();
-  }
 
-  // Bash: check for redirects writing outside project
-  if (call.tool === "Bash") {
-    const command = call.args.command;
-    if (typeof command !== "string") {
+    const projectRoot = call.context.projectRoot;
+
+    // Write and Edit: check file_path argument
+    if (call.tool === "Write" || call.tool === "Edit") {
+      const filePath = call.args.file_path;
+      if (typeof filePath !== "string") {
+        return next();
+      }
+      if (!isInsideProject(filePath, projectRoot)) {
+        return deny(`Write blocked: ${filePath} is outside project root`);
+      }
       return next();
     }
-    const outside = findBashWriteOutsideProject(command, projectRoot);
-    if (outside) {
-      return deny(`Write blocked: ${outside} is outside project root`);
-    }
-  }
 
-  return next();
-}
+    // Bash: check for redirects writing outside project
+    if (call.tool === "Bash") {
+      const command = call.args.command;
+      if (typeof command !== "string") {
+        return next();
+      }
+      const outside = findBashWriteOutsideProject(command, projectRoot);
+      if (outside) {
+        return deny(`Write blocked: ${outside} is outside project root`);
+      }
+    }
+
+    return next();
+  },
+};
+export default denyWritesOutsideProject;
 
 function isInsideProject(filePath: string, projectRoot: string): boolean {
   return filePath === projectRoot || filePath.startsWith(projectRoot + "/");
@@ -96,4 +101,3 @@ function findBashWriteOutsideProject(
 
   return null;
 }
-

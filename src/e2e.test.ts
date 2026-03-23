@@ -2,17 +2,22 @@ import { describe, expect, it } from 'bun:test'
 import { buildToolCall, buildHookResponse } from './runner'
 import { runPolicy } from './policy'
 import { definePolicy, allow, deny, next } from './index'
+import type { Policy } from './types'
+
+function p(name: string, handler: Policy['handler']): Policy {
+  return { name, description: `e2e: ${name}`, handler }
+}
 
 describe('end-to-end: hook input → policy → hook response', () => {
   const policy = definePolicy([
-    async (call) => call.tool === 'Read' ? allow() : next(),
-    async (call) => {
+    p('allow-read', async (call) => call.tool === 'Read' ? allow() : next()),
+    p('allow-localhost', async (call) => {
       if (call.tool === 'Bash' && call.args.command?.includes('localhost')) {
         return allow()
       }
       return next()
-    },
-    async () => deny('default deny'),
+    }),
+    p('deny-all', async () => deny('default deny')),
   ])
 
   it('allows Read tool', async () => {

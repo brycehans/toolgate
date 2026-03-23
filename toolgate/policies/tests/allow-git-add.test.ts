@@ -32,7 +32,7 @@ describe("allow-git-add", () => {
 
     for (const cmd of allowed) {
       it(`allows: ${cmd}`, async () => {
-        const result = await allowGitAdd(bash(cmd));
+        const result = await allowGitAdd.handler(bash(cmd));
         expect(result.verdict).toBe(ALLOW);
       });
     }
@@ -49,7 +49,7 @@ describe("allow-git-add", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowGitAdd(bash(cmd));
+        const result = await allowGitAdd.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -64,7 +64,7 @@ describe("allow-git-add", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowGitAdd(bash(cmd));
+        const result = await allowGitAdd.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -80,7 +80,7 @@ describe("allow-git-add", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowGitAdd(bash(cmd));
+        const result = await allowGitAdd.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -96,7 +96,7 @@ describe("allow-git-add", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowGitAdd(bash(cmd));
+        const result = await allowGitAdd.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -109,7 +109,7 @@ describe("allow-git-add", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowGitAdd(bash(cmd));
+        const result = await allowGitAdd.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -125,7 +125,7 @@ describe("allow-git-add", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${JSON.stringify(cmd)}`, async () => {
-        const result = await allowGitAdd(bash(cmd));
+        const result = await allowGitAdd.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -143,7 +143,7 @@ describe("allow-git-add", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowGitAdd(bash(cmd));
+        const result = await allowGitAdd.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -151,12 +151,12 @@ describe("allow-git-add", () => {
 
   describe("passes through non-Bash tools", () => {
     it("passes through Read tool", async () => {
-      const result = await allowGitAdd(otherTool("Read"));
+      const result = await allowGitAdd.handler(otherTool("Read"));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("passes through Write tool", async () => {
-      const result = await allowGitAdd(otherTool("Write"));
+      const result = await allowGitAdd.handler(otherTool("Write"));
       expect(result.verdict).toBe(NEXT);
     });
   });
@@ -168,7 +168,7 @@ describe("allow-git-add", () => {
         args: { command: 123 },
         context: { cwd: "/tmp", env: {}, projectRoot: null },
       };
-      const result = await allowGitAdd(call);
+      const result = await allowGitAdd.handler(call);
       expect(result.verdict).toBe(NEXT);
     });
 
@@ -178,7 +178,7 @@ describe("allow-git-add", () => {
         args: {},
         context: { cwd: "/tmp", env: {}, projectRoot: null },
       };
-      const result = await allowGitAdd(call);
+      const result = await allowGitAdd.handler(call);
       expect(result.verdict).toBe(NEXT);
     });
   });

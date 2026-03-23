@@ -16,14 +16,14 @@ export async function testTool(tool: string, args: Record<string, any>, why = fa
     },
   }
 
-  const middlewares = await loadConfigs(cwd)
+  const policies = await loadConfigs(cwd)
 
-  if (middlewares.length === 0) {
+  if (policies.length === 0) {
     console.log('No policies loaded. Configure toolgate.config.ts first.')
     process.exit(1)
   }
 
-  const { result, index, name } = await runPolicyWithTrace(middlewares, call)
+  const { result, index, name, description } = await runPolicyWithTrace(policies, call)
 
   const symbol = result.verdict
   if (symbol === ALLOW) {
@@ -37,10 +37,13 @@ export async function testTool(tool: string, args: Record<string, any>, why = fa
 
   if (why) {
     if (index === -1) {
-      console.log(`  why: all ${middlewares.length} policies returned next()`)
+      console.log(`  why: all ${policies.length} policies returned next()`)
     } else {
-      const label = name || `middleware[${index}]`
+      const label = name || `policy[${index}]`
       console.log(`  why: ${label} (index ${index})`)
+      if (description) {
+        console.log(`  description: ${description}`)
+      }
     }
   }
 }

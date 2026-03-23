@@ -1,7 +1,7 @@
 import { existsSync } from 'fs'
 import { join } from 'path'
 import { homedir } from 'os'
-import type { Middleware } from './types'
+import type { Policy } from './types'
 
 const CONFIG_FILENAME = 'toolgate.config.ts'
 
@@ -19,27 +19,27 @@ export function findGlobalConfig(): string {
   return join(homedir(), '.claude', CONFIG_FILENAME)
 }
 
-export async function loadConfigFile(path: string): Promise<Middleware[]> {
+export async function loadConfigFile(path: string): Promise<Policy[]> {
   const mod = await import(path)
-  const middlewares = mod.default
-  if (!Array.isArray(middlewares)) {
-    throw new Error(`toolgate: config at ${path} must export a default array of middleware`)
+  const policies = mod.default
+  if (!Array.isArray(policies)) {
+    throw new Error(`toolgate: config at ${path} must export a default array of policies`)
   }
-  return middlewares
+  return policies
 }
 
-export async function loadConfigs(cwd: string): Promise<Middleware[]> {
-  const middlewares: Middleware[] = []
+export async function loadConfigs(cwd: string): Promise<Policy[]> {
+  const policies: Policy[] = []
 
   const projectPath = await findProjectConfig(cwd)
   if (projectPath) {
-    middlewares.push(...await loadConfigFile(projectPath))
+    policies.push(...await loadConfigFile(projectPath))
   }
 
   const globalPath = findGlobalConfig()
   if (existsSync(globalPath)) {
-    middlewares.push(...await loadConfigFile(globalPath))
+    policies.push(...await loadConfigFile(globalPath))
   }
 
-  return middlewares
+  return policies
 }

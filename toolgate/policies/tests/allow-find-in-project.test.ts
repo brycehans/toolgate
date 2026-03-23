@@ -17,61 +17,61 @@ function find(path: string | undefined, projectRoot: string | null = PROJECT): T
 describe("allow-find-in-project", () => {
   describe("allows find within project", () => {
     it("allows explicit path in project", async () => {
-      const result = await allowFindInProject(find("/home/user/project/src"));
+      const result = await allowFindInProject.handler(find("/home/user/project/src"));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows project root as path", async () => {
-      const result = await allowFindInProject(find("/home/user/project"));
+      const result = await allowFindInProject.handler(find("/home/user/project"));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows nested path", async () => {
-      const result = await allowFindInProject(find("/home/user/project/a/b/c"));
+      const result = await allowFindInProject.handler(find("/home/user/project/a/b/c"));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows when no path specified (defaults to cwd)", async () => {
-      const result = await allowFindInProject(find(undefined));
+      const result = await allowFindInProject.handler(find(undefined));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows relative path within project", async () => {
-      const result = await allowFindInProject(find("src/utils"));
+      const result = await allowFindInProject.handler(find("src/utils"));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows relative path with dot prefix", async () => {
-      const result = await allowFindInProject(find("./toolgate/policies"));
+      const result = await allowFindInProject.handler(find("./toolgate/policies"));
       expect(result.verdict).toBe(ALLOW);
     });
   });
 
   describe("rejects find outside project", () => {
     it("rejects path outside project", async () => {
-      const result = await allowFindInProject(find("/etc"));
+      const result = await allowFindInProject.handler(find("/etc"));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("rejects sibling directory", async () => {
-      const result = await allowFindInProject(find("/home/user/other-project"));
+      const result = await allowFindInProject.handler(find("/home/user/other-project"));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("rejects prefix trick", async () => {
-      const result = await allowFindInProject(find("/home/user/project-evil/src"));
+      const result = await allowFindInProject.handler(find("/home/user/project-evil/src"));
       expect(result.verdict).toBe(NEXT);
     });
   });
 
   describe("passes through when no project root", () => {
     it("with explicit path", async () => {
-      const result = await allowFindInProject(find("/home/user/project/src", null));
+      const result = await allowFindInProject.handler(find("/home/user/project/src", null));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("with no path", async () => {
-      const result = await allowFindInProject(find(undefined, null));
+      const result = await allowFindInProject.handler(find(undefined, null));
       expect(result.verdict).toBe(NEXT);
     });
   });
@@ -83,7 +83,7 @@ describe("allow-find-in-project", () => {
         args: { pattern: "*.ts" },
         context: { cwd: "/tmp", env: {}, projectRoot: PROJECT },
       };
-      const result = await allowFindInProject(call);
+      const result = await allowFindInProject.handler(call);
       expect(result.verdict).toBe(NEXT);
     });
   });
@@ -94,7 +94,7 @@ describe("allow-find-in-project", () => {
       args: { command: "find ." },
       context: { cwd: PROJECT, env: {}, projectRoot: PROJECT },
     };
-    const result = await allowFindInProject(call);
+    const result = await allowFindInProject.handler(call);
     expect(result.verdict).toBe(NEXT);
   });
 });

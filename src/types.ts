@@ -18,3 +18,9 @@ export type VerdictResult =
   | { verdict: typeof NEXT };
 
 export type Middleware = (call: ToolCall) => Promise<VerdictResult>;
+
+export interface Policy {
+  name: string;
+  description: string;
+  handler: Middleware;
+}
