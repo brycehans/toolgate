@@ -66,12 +66,46 @@ describe("allow-ls-in-project", () => {
   describe("rejects compound commands", () => {
     const rejected = [
       "ls && rm -rf /",
-      "ls | cat /etc/passwd",
+      "ls | xargs cat /etc/passwd",
       "ls\necho pwned",
     ];
 
     for (const cmd of rejected) {
       it(`rejects: ${JSON.stringify(cmd)}`, async () => {
+        const result = await allowLsInProject.handler(bash(cmd));
+        expect(result.verdict).toBe(NEXT);
+      });
+    }
+  });
+
+  describe("allows ls piped to safe filters", () => {
+    const allowed = [
+      "ls -la | grep -i site",
+      "ls -la | head -20",
+      "ls | wc -l",
+      "ls -la | grep foo | head -5",
+      `ls ${PROJECT}/src | sort`,
+      "ls -la | grep test | wc -l",
+    ];
+
+    for (const cmd of allowed) {
+      it(`allows: ${cmd}`, async () => {
+        const result = await allowLsInProject.handler(bash(cmd));
+        expect(result.verdict).toBe(ALLOW);
+      });
+    }
+  });
+
+  describe("rejects ls piped to unsafe commands", () => {
+    const rejected = [
+      "ls | xargs rm",
+      "ls | sh -c 'cat'",
+      "ls | tee /tmp/out",
+      "ls | sort -o outfile",
+    ];
+
+    for (const cmd of rejected) {
+      it(`rejects: ${cmd}`, async () => {
         const result = await allowLsInProject.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
