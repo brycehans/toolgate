@@ -23,7 +23,7 @@ export async function testPolicy(policies: Policy[], cases: TestCase[]): Promise
       context: {
         cwd: tc.context?.cwd ?? process.cwd(),
         env: tc.context?.env ?? {},
-        projectRoot: tc.context?.projectRoot ?? null,
+        projectRoot: tc.context?.projectRoot ?? process.cwd(),
       },
     }
 

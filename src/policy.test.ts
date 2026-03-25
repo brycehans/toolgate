@@ -6,7 +6,7 @@ import type { Policy, ToolCall } from './types'
 const fakeCall: ToolCall = {
   tool: 'Read',
   args: { file_path: '/foo' },
-  context: { cwd: '/tmp', env: {}, projectRoot: null },
+  context: { cwd: '/tmp', env: {}, projectRoot: '/tmp' },
 }
 
 function p(name: string, handler: Policy['handler']): Policy {

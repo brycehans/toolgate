@@ -9,7 +9,7 @@ export interface ToolCall {
 export interface CallContext {
   cwd: string;
   env: Record<string, string>;
-  projectRoot: string | null;
+  projectRoot: string;
 }
 
 export type VerdictResult =

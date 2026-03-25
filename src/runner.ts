@@ -2,8 +2,6 @@ import type { ToolCall, VerdictResult } from './types'
 import { ALLOW, DENY, NEXT } from './verdicts'
 import { loadConfigs } from './config'
 import { runPolicy } from './policy'
-import { findGitRoot } from './utils'
-
 interface HookInput {
   tool_name: string
   tool_input: Record<string, any>
@@ -27,7 +25,7 @@ export function buildToolCall(input: HookInput): ToolCall {
     context: {
       cwd: input.cwd,
       env: Object.fromEntries(Object.entries(process.env).filter(([, v]) => v !== undefined)) as Record<string, string>,
-      projectRoot: findGitRoot(input.cwd),
+      projectRoot: input.cwd,
     },
   }
 }

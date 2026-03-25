@@ -1,7 +1,6 @@
 import { loadConfigs } from './config'
 import { runPolicyWithTrace } from './policy'
 import { ALLOW, DENY, NEXT } from './verdicts'
-import { findGitRoot } from './utils'
 import type { ToolCall } from './types'
 
 export async function testTool(tool: string, args: Record<string, any>, why = false): Promise<void> {
@@ -12,7 +11,7 @@ export async function testTool(tool: string, args: Record<string, any>, why = fa
     context: {
       cwd,
       env: Object.fromEntries(Object.entries(process.env).filter(([, v]) => v !== undefined)) as Record<string, string>,
-      projectRoot: findGitRoot(cwd),
+      projectRoot: cwd,
     },
   }
 

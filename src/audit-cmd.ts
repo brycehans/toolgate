@@ -4,7 +4,6 @@ import { join } from 'path'
 import { loadConfigs } from './config'
 import { runPolicyWithTrace } from './policy'
 import { ALLOW, DENY, NEXT } from './verdicts'
-import { findGitRoot } from './utils'
 import type { ToolCall } from './types'
 
 interface SettingsJson {
@@ -108,7 +107,7 @@ export async function auditPermissions(format: 'table' | 'json' = 'table'): Prom
   }
 
   const policies = await loadConfigs(cwd)
-  const projectRoot = findGitRoot(cwd)
+  const projectRoot = cwd
 
   const results: { file: string; results: AuditResult[] }[] = []
 
