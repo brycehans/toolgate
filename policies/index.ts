@@ -22,6 +22,7 @@ import allowGhReadOnly from "./allow-gh-read-only";
 import allowBashFindInProject from "./allow-bash-find-in-project";
 import allowSuperpowersSkills from "./allow-superpowers-skills";
 import allowGitRevParse from "./allow-git-rev-parse";
+import allowCdInProject from "./allow-cd-in-project";
 import allowSafeReadCommands from "./allow-safe-read-commands";
 
 export const builtinPolicies = [
@@ -49,5 +50,6 @@ export const builtinPolicies = [
   allowBashFindInProject,
   allowSuperpowersSkills,
   allowGitRevParse,
+  allowCdInProject,
   allowSafeReadCommands,
 ];
