@@ -1,6 +1,8 @@
 import denyGitAddAndCommit from "./deny-git-add-and-commit";
 import denyWritesOutsideProject from "./deny-writes-outside-project";
 import denyGitDashC from "./deny-git-dash-c";
+import denyBashGrep from "./deny-bash-grep";
+import denyCdChained from "./deny-cd-chained";
 import redirectPlansToProject from "./redirect-plans-to-project";
 import allowBunTest from "./allow-bun-test";
 import allowGitAdd from "./allow-git-add";
@@ -20,12 +22,15 @@ import allowGhReadOnly from "./allow-gh-read-only";
 import allowBashFindInProject from "./allow-bash-find-in-project";
 import allowSuperpowersSkills from "./allow-superpowers-skills";
 import allowGitRevParse from "./allow-git-rev-parse";
+import allowSafeReadCommands from "./allow-safe-read-commands";
 
 export const builtinPolicies = [
   denyGitAddAndCommit,
   redirectPlansToProject,
   denyWritesOutsideProject,
   denyGitDashC,
+  denyBashGrep,
+  denyCdChained,
   allowBunTest,
   allowGitAdd,
   allowGitDiff,
@@ -44,4 +49,5 @@ export const builtinPolicies = [
   allowBashFindInProject,
   allowSuperpowersSkills,
   allowGitRevParse,
+  allowSafeReadCommands,
 ];

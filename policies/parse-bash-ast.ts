@@ -129,11 +129,23 @@ export function wordToString(word: Word): string | null {
     return null;
   }
 
-  // Multi-part: all must be Lit
+  // Multi-part: each part must resolve to a string
   const values: string[] = [];
   for (const p of parts) {
-    if (p.Type !== "Lit") return null;
-    values.push((p as Lit).Value);
+    if (p.Type === "Lit") {
+      values.push((p as Lit).Value);
+    } else if (p.Type === "SglQuoted") {
+      values.push((p as SglQuoted).Value);
+    } else if (p.Type === "DblQuoted") {
+      const dbl = p as DblQuoted;
+      if (dbl.Parts.length === 1 && dbl.Parts[0].Type === "Lit") {
+        values.push((dbl.Parts[0] as Lit).Value);
+      } else {
+        return null;
+      }
+    } else {
+      return null;
+    }
   }
   return values.join("");
 }
@@ -142,6 +154,8 @@ export function getArgs(stmt: Stmt): string[] | null {
   const cmd = stmt.Cmd;
   if (!cmd || cmd.Type !== "CallExpr") return null;
   const call = cmd as CallExpr;
+  // Reject commands with env var assignments (e.g. GIT_DIR=. git add .)
+  if ((call as any).Assigns && (call as any).Assigns.length > 0) return null;
   const result: string[] = [];
   for (const arg of call.Args) {
     const s = wordToString(arg);
@@ -279,6 +293,8 @@ export async function safeBashCommand(
   if (stmt.Background) return null;
   if (stmt.Negated) return null;
   if (hasUnsafeNodes(file)) return null;
+  // Reject commands with comments (could hide payloads)
+  if ((stmt as any).Comments && (stmt as any).Comments.length > 0) return null;
 
   return getArgs(stmt);
 }
@@ -312,6 +328,8 @@ export async function safeBashCommandOrPipeline(
   if (stmt.Background) return null;
   if (stmt.Negated) return null;
   if (hasUnsafeNodes(file)) return null;
+  // Reject commands with comments (could hide payloads)
+  if ((stmt as any).Comments && (stmt as any).Comments.length > 0) return null;
 
   if (!stmt.Cmd) return null;
 
@@ -356,6 +374,10 @@ const UNCONDITIONALLY_SAFE = new Set([
   "cat",
   "tr",
   "cut",
+  "file",
+  "stat",
+  "du",
+  "diff",
 ]);
 
 export function isSafeFilter(tokens: string[]): boolean {

@@ -342,6 +342,10 @@ describe("isSafeFilter", () => {
       ["sort", "-r"],
       ["uniq"],
       ["uniq", "-c"],
+      ["file", "foo.txt"],
+      ["stat", "foo.txt"],
+      ["du", "-sh", "."],
+      ["diff", "a.txt", "b.txt"],
     ];
 
     for (const tokens of safe) {
