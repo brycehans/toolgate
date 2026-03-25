@@ -46,7 +46,7 @@ When creating a new policy or renaming an existing one, you **must** update `pol
 ### Key Patterns
 
 - **Whitelist approach**: Policies explicitly allow known-safe patterns; everything else falls through as `next()` (prompts user)
-- **Shell command safety**: Use `shell-quote` to parse Bash commands into tokens. Reject if any token is non-string (operators), contains shell metacharacters, or command has newlines
+- **Shell command safety**: Use `shfmt --tojson` (via `policies/parse-bash-ast.ts`) to parse Bash commands into typed ASTs. Use `safeBashCommand()` for simple commands or `safeBashCommandOrPipeline()` for commands that may pipe to safe filters. These reject unsafe patterns (substitution, chaining, background, unsafe redirects) at the AST level.
 - **Self-imports in tests**: Policy tests import from `"toolgate"` (package self-reference) instead of relative `../../../src` paths
 - **Policy handlers are async**: All handlers return `Promise<VerdictResult>`
 - **Testing policy handlers directly**: Policy tests call `policyObj.handler(call)` to test the handler function
@@ -68,11 +68,11 @@ const myPolicy: Policy = {
 export default myPolicy;
 ```
 
-For Bash policies that parse commands, always guard against:
-1. Command chaining (`&&`, `||`, `;`, `|`, `&`)
-2. Shell substitution (`$()`, backticks)
-3. Multiline commands (newlines as command separators)
-4. Metacharacters in string tokens that `shell-quote` misses
+For Bash policies that parse commands, use the AST helpers in `policies/parse-bash-ast.ts`:
+- `safeBashCommand(call)` — returns `string[] | null` args for a single safe command
+- `safeBashCommandOrPipeline(call)` — same but allows pipes to safe filters (grep, head, sort, etc.)
+- `parseShell(command)` — low-level: returns the full shfmt AST for custom analysis
+- These automatically reject command chaining, substitution, unsafe redirects, and background execution
 
 ## Policy Placement
 
@@ -96,7 +96,7 @@ New policies must be inserted at the correct position. First non-`next()` verdic
 |---|---|
 | 3+ related rules share a prefix | Single one-off command |
 | Pattern is useful across projects | Deeply project-specific |
-| Command can be safely parsed with `safeBashTokens` | Command is hard to scope safely (e.g., `xargs`) |
+| Command can be safely parsed with `safeBashCommand` | Command is hard to scope safely (e.g., `xargs`) |
 | You want deny semantics with a message | Simple allow is sufficient |
 
 ## Auditing Permissions
