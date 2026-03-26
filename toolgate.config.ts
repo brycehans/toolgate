@@ -29,4 +29,13 @@ export default definePolicy([
       return next();
     },
   },
+  {
+    name: "Allow claude-code-guide agent",
+    description: "Permits the claude-code-guide read-only research agent",
+    handler: async (call) => {
+      if (call.tool !== "Agent") return next();
+      if (call.args.subagent_type !== "claude-code-guide") return next();
+      return allow();
+    },
+  },
 ]);
