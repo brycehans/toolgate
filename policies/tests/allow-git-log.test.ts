@@ -77,6 +77,25 @@ describe("allow-git-log", () => {
     }
   });
 
+  describe("allows safe git show commands", () => {
+    const allowed = [
+      "git show",
+      "git show HEAD",
+      "git show HEAD:src/file.ts",
+      "git show abc1234",
+      "git show --stat",
+      "git show --format=%B HEAD",
+      "git show v1.0.0",
+    ];
+
+    for (const cmd of allowed) {
+      it(`allows: ${cmd}`, async () => {
+        const result = await allowGitLog.handler(bash(cmd));
+        expect(result.verdict).toBe(ALLOW);
+      });
+    }
+  });
+
   describe("rejects non-git-log commands", () => {
     const rejected = [
       "git commit -m 'msg'",

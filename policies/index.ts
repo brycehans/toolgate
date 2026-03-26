@@ -27,6 +27,7 @@ import allowCdInProject from "./allow-cd-in-project";
 import allowGitWorktree from "./allow-git-worktree";
 import allowReadOnlyGitBranch from "./allow-git-branch";
 import allowSafeReadCommands from "./allow-safe-read-commands";
+import allowReadPluginCache from "./allow-read-plugin-cache";
 import allowEditInProject from "./allow-edit-in-project";
 
 export const builtinPolicies = [
@@ -59,5 +60,6 @@ export const builtinPolicies = [
   allowGitWorktree,
   allowReadOnlyGitBranch,
   allowSafeReadCommands,
+  allowReadPluginCache,
   allowEditInProject,
 ];
