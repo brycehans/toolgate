@@ -24,6 +24,7 @@ import allowSuperpowersSkills from "./allow-superpowers-skills";
 import allowGitRevParse from "./allow-git-rev-parse";
 import allowCdInProject from "./allow-cd-in-project";
 import allowGitWorktree from "./allow-git-worktree";
+import allowReadOnlyGitBranch from "./allow-git-branch";
 import allowSafeReadCommands from "./allow-safe-read-commands";
 
 export const builtinPolicies = [
@@ -53,5 +54,6 @@ export const builtinPolicies = [
   allowGitRevParse,
   allowCdInProject,
   allowGitWorktree,
+  allowReadOnlyGitBranch,
   allowSafeReadCommands,
 ];
