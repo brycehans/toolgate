@@ -16,7 +16,7 @@ const denyWritesOutsideProject: Policy = {
       const filePath = call.args.file_path;
       if (typeof filePath !== "string") return next();
       if (!isInsideProject(filePath, projectRoot)) {
-        return deny(`Write blocked: ${filePath} is outside project root`);
+        return deny(`Write blocked: ${filePath} is outside project root (${projectRoot})`);
       }
       return next();
     }
@@ -36,7 +36,7 @@ const denyWritesOutsideProject: Policy = {
         if (!r.target) continue;
         const resolved = resolvePath(r.target, cwd);
         if (resolved && !isInsideProject(resolved, projectRoot)) {
-          return deny("Write blocked: redirect target is outside project root");
+          return deny(`Write blocked: redirect target is outside project root (${projectRoot})`);
         }
       }
 
@@ -46,7 +46,7 @@ const denyWritesOutsideProject: Policy = {
         if (SAFE_WRITE_TARGETS.has(target)) continue;
         const resolved = resolvePath(target, cwd);
         if (resolved && !isInsideProject(resolved, projectRoot)) {
-          return deny("Write blocked: redirect target is outside project root");
+          return deny(`Write blocked: redirect target is outside project root (${projectRoot})`);
         }
       }
 
