@@ -157,7 +157,7 @@ export function getArgs(stmt: Stmt): string[] | null {
   // Reject commands with env var assignments (e.g. GIT_DIR=. git add .)
   if ((call as any).Assigns && (call as any).Assigns.length > 0) return null;
   const result: string[] = [];
-  for (const arg of call.Args) {
+  for (const arg of call.Args ?? []) {
     const s = wordToString(arg);
     if (s === null) return null;
     result.push(s);
@@ -378,6 +378,7 @@ const UNCONDITIONALLY_SAFE = new Set([
   "stat",
   "du",
   "diff",
+  "jq",
 ]);
 
 export function isSafeFilter(tokens: string[]): boolean {
@@ -385,6 +386,14 @@ export function isSafeFilter(tokens: string[]): boolean {
   const cmd = tokens[0];
 
   if (UNCONDITIONALLY_SAFE.has(cmd)) return true;
+
+  if (cmd === "sed") {
+    for (const t of tokens) {
+      if (t === "-i" || t.startsWith("-i") || t === "--in-place" || t.startsWith("--in-place="))
+        return false;
+    }
+    return true;
+  }
 
   if (cmd === "sort") {
     for (const t of tokens) {
@@ -431,13 +440,93 @@ function walkStmts(stmt: Stmt, fn: (s: Stmt) => void): void {
   }
 }
 
+/**
+ * Decompose a && chain into its leaf CallExpr statements.
+ * Returns null if:
+ * - Multiple statements (semicolons)
+ * - Any operator other than Op.And (||, pipes)
+ * - Any leaf is not a CallExpr
+ * - Any segment has unsafe redirects, unsafe nodes, assignments, or comments
+ * - Background or negated execution
+ *
+ * Single commands (no &&) return a single-element array for uniform handling.
+ * Safe redirects (2>&1, 2>/dev/null) are allowed within segments.
+ */
+export function getAndChainSegments(file: ShellFile): Stmt[] | null {
+  if (file.Stmts.length !== 1) return null;
+
+  const stmt = file.Stmts[0];
+  if (stmt.Background) return null;
+  if (stmt.Negated) return null;
+  if ((stmt as any).Comments?.length > 0) return null;
+
+  const cmd = stmt.Cmd;
+  if (!cmd) return null;
+
+  // Single simple command — wrap for uniform handling
+  if (cmd.Type === "CallExpr") {
+    if (hasUnsafeNodes(cmd)) return null;
+    if (hasUnsafeRedirects(stmt)) return null;
+    if ((cmd as any).Assigns?.length > 0) return null;
+    return [stmt];
+  }
+
+  // Must be a BinaryCmd — walk the tree
+  if (cmd.Type !== "BinaryCmd") return null;
+
+  const segments: Stmt[] = [];
+  if (!collectAndLeaves(cmd as BinaryCmd, segments)) return null;
+  return segments;
+}
+
+function collectAndLeaves(bin: BinaryCmd, out: Stmt[]): boolean {
+  // Only allow && operator — reject ||, pipes, etc.
+  if (bin.Op !== Op.And) return false;
+
+  // Left side
+  const left = bin.X;
+  if (!left.Cmd) return false;
+  if (left.Cmd.Type === "BinaryCmd") {
+    if (!collectAndLeaves(left.Cmd as BinaryCmd, out)) return false;
+  } else if (left.Cmd.Type === "CallExpr") {
+    if (left.Negated) return false;
+    if (left.Background) return false;
+    if (hasUnsafeNodes(left.Cmd)) return false;
+    if (hasUnsafeRedirects(left)) return false;
+    if ((left.Cmd as any).Assigns?.length > 0) return false;
+    if ((left as any).Comments?.length > 0) return false;
+    out.push(left);
+  } else {
+    return false;
+  }
+
+  // Right side
+  const right = bin.Y;
+  if (!right.Cmd) return false;
+  if (right.Cmd.Type === "BinaryCmd") {
+    if (!collectAndLeaves(right.Cmd as BinaryCmd, out)) return false;
+  } else if (right.Cmd.Type === "CallExpr") {
+    if (right.Negated) return false;
+    if (right.Background) return false;
+    if (hasUnsafeNodes(right.Cmd)) return false;
+    if (hasUnsafeRedirects(right)) return false;
+    if ((right.Cmd as any).Assigns?.length > 0) return false;
+    if ((right as any).Comments?.length > 0) return false;
+    out.push(right);
+  } else {
+    return false;
+  }
+
+  return true;
+}
+
 export function findTeeTargets(file: ShellFile): string[] {
   const targets: string[] = [];
   for (const stmt of file.Stmts) {
     walkStmts(stmt, (s) => {
       if (!s.Cmd || s.Cmd.Type !== "CallExpr") return;
       const call = s.Cmd as CallExpr;
-      const args = call.Args;
+      const args = call.Args ?? [];
       if (args.length === 0) return;
       const cmdName = wordToString(args[0]);
       if (cmdName !== "tee") return;
@@ -458,7 +547,7 @@ export function findGitSubcommands(file: ShellFile): string[] {
     walkStmts(stmt, (s) => {
       if (!s.Cmd || s.Cmd.Type !== "CallExpr") return;
       const call = s.Cmd as CallExpr;
-      const args = call.Args;
+      const args = call.Args ?? [];
       if (args.length < 2) return;
       const cmdName = wordToString(args[0]);
       if (cmdName !== "git") return;

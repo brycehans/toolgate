@@ -15,6 +15,7 @@ import {
   findWriteRedirects,
   findTeeTargets,
   findGitSubcommands,
+  getAndChainSegments,
 } from "../parse-bash-ast";
 
 function bash(command: string): ToolCall {
@@ -470,5 +471,113 @@ describe("findGitSubcommands", () => {
     const file = await parseShell("echo 'git push'");
     const subs = findGitSubcommands(file!);
     expect(subs).toEqual([]);
+  });
+});
+
+// getAndChainSegments
+
+describe("getAndChainSegments", () => {
+  describe("returns segments for valid && chains", () => {
+    it("returns single segment for simple command", async () => {
+      const file = await parseShell("echo hello");
+      expect(file).not.toBeNull();
+      const segments = getAndChainSegments(file!);
+      expect(segments).not.toBeNull();
+      expect(segments).toHaveLength(1);
+      const args = getArgs(segments![0]);
+      expect(args).toEqual(["echo", "hello"]);
+    });
+
+    it("returns two segments for a && b", async () => {
+      const file = await parseShell("echo a && echo b");
+      const segments = getAndChainSegments(file!);
+      expect(segments).not.toBeNull();
+      expect(segments).toHaveLength(2);
+      expect(getArgs(segments![0])).toEqual(["echo", "a"]);
+      expect(getArgs(segments![1])).toEqual(["echo", "b"]);
+    });
+
+    it("returns three segments for a && b && c", async () => {
+      const file = await parseShell("php -l a.php && php -l b.php && php -l c.php");
+      const segments = getAndChainSegments(file!);
+      expect(segments).not.toBeNull();
+      expect(segments).toHaveLength(3);
+      expect(getArgs(segments![0])).toEqual(["php", "-l", "a.php"]);
+      expect(getArgs(segments![1])).toEqual(["php", "-l", "b.php"]);
+      expect(getArgs(segments![2])).toEqual(["php", "-l", "c.php"]);
+    });
+
+    it("returns four segments for deeply nested chain", async () => {
+      const file = await parseShell("echo a && echo b && echo c && echo d");
+      const segments = getAndChainSegments(file!);
+      expect(segments).not.toBeNull();
+      expect(segments).toHaveLength(4);
+    });
+  });
+
+  describe("returns null for invalid/unsafe patterns", () => {
+    it("rejects || chains", async () => {
+      const file = await parseShell("echo a || echo b");
+      expect(getAndChainSegments(file!)).toBeNull();
+    });
+
+    it("rejects mixed && and ||", async () => {
+      const file = await parseShell("echo a && echo b || echo c");
+      expect(getAndChainSegments(file!)).toBeNull();
+    });
+
+    it("rejects pipes", async () => {
+      const file = await parseShell("echo a | grep a");
+      expect(getAndChainSegments(file!)).toBeNull();
+    });
+
+    it("rejects semicolons (multiple statements)", async () => {
+      const file = await parseShell("echo a; echo b");
+      expect(getAndChainSegments(file!)).toBeNull();
+    });
+
+    it("rejects segments with redirects", async () => {
+      const file = await parseShell("echo a > /tmp/out && echo b");
+      expect(getAndChainSegments(file!)).toBeNull();
+    });
+
+    it("rejects segments with command substitution", async () => {
+      const file = await parseShell("echo $(whoami) && echo b");
+      expect(getAndChainSegments(file!)).toBeNull();
+    });
+
+    it("rejects segments with variable expansion", async () => {
+      const file = await parseShell("echo $HOME && echo b");
+      expect(getAndChainSegments(file!)).toBeNull();
+    });
+
+    it("rejects segments with env assignments", async () => {
+      const file = await parseShell("FOO=bar echo a && echo b");
+      expect(getAndChainSegments(file!)).toBeNull();
+    });
+
+    it("rejects background execution", async () => {
+      const file = await parseShell("echo a && echo b &");
+      expect(getAndChainSegments(file!)).toBeNull();
+    });
+
+    it("rejects negated commands", async () => {
+      const file = await parseShell("! echo a && echo b");
+      expect(getAndChainSegments(file!)).toBeNull();
+    });
+
+    it("allows safe redirects (2>&1) within segments", async () => {
+      const file = await parseShell("php -l a.php 2>&1 && php -l b.php 2>&1");
+      const segments = getAndChainSegments(file!);
+      expect(segments).not.toBeNull();
+      expect(segments).toHaveLength(2);
+    });
+
+    it("allows /dev/null redirects within segments", async () => {
+      const file = await parseShell("php -l a.php 2>/dev/null && php -l b.php");
+      const segments = getAndChainSegments(file!);
+      expect(segments).not.toBeNull();
+      expect(segments).toHaveLength(2);
+    });
   });
 });
