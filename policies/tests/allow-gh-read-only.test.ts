@@ -21,6 +21,7 @@ describe("allow-gh-read-only", () => {
       "gh pr checks 42",
       "gh run view 123",
       "gh run list",
+      "gh run watch 123 --exit-status",
       "gh search issues 'bug'",
       "gh search prs 'fix'",
       "gh search repos 'toolgate'",

@@ -31,7 +31,7 @@ const allowBashFindInProject: Policy = {
       "-mtime", "-atime", "-ctime", "-mmin", "-amin", "-cmin",
       "-readable", "-writable", "-executable",
       "-maxdepth", "-mindepth",
-      "-not", "-and", "-or", "!",
+      "-not", "-and", "-or", "-a", "-o", "!",
       "-follow", "-xdev", "-mount", "-daystart",
       "-true", "-false", "-prune",
     ]);

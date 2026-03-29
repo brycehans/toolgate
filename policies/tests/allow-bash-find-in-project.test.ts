@@ -25,6 +25,9 @@ describe("allow-bash-find-in-project", () => {
       `find ${PROJECT}/src`,
       `find ${PROJECT}`,
       `find ${PROJECT} -name '*.ts'`,
+      "find . -name '*.ts' -o -name '*.js'",
+      "find . -type f -name '*.blade.php' -o -name '*.tsx' -o -name '*.ts'",
+      "find . -name 'main.ts' -o -name 'main.tsx'",
     ];
 
     for (const cmd of allowed) {

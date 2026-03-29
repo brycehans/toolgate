@@ -18,7 +18,45 @@ const SAFE_READ_COMMANDS = new Set([
   "stat",
   "du",
   "diff",
+  "sed",
 ]);
+
+/**
+ * Extract file paths from sed arguments, skipping flags and the script expression.
+ * sed usage: sed [flags] [-e script]... [-f file]... [script] [file...]
+ */
+function getSedFilePaths(tokens: string[]): string[] {
+  const paths: string[] = [];
+  let i = 1;
+  let scriptSeen = false;
+
+  while (i < tokens.length) {
+    const t = tokens[i];
+    if (t === "-e" || t === "--expression") {
+      scriptSeen = true;
+      i += 2; // skip flag and its argument
+    } else if (t.startsWith("-e") || t.startsWith("--expression=")) {
+      scriptSeen = true;
+      i++;
+    } else if (t === "-f" || t === "--file") {
+      scriptSeen = true;
+      i += 2;
+    } else if (t.startsWith("-f") || t.startsWith("--file=")) {
+      scriptSeen = true;
+      i++;
+    } else if (t.startsWith("-")) {
+      i++;
+    } else if (!scriptSeen) {
+      // First non-flag, non -e/-f argument is the inline script
+      scriptSeen = true;
+      i++;
+    } else {
+      paths.push(t);
+      i++;
+    }
+  }
+  return paths;
+}
 
 function isInProject(path: string, cwd: string, root: string): boolean {
   const resolved = resolve(cwd, path);
@@ -42,6 +80,14 @@ const allowSafeReadCommands: Policy = {
     const tokens = getArgs(cmds[0]);
     if (!tokens || !SAFE_READ_COMMANDS.has(tokens[0])) return next();
 
+    // sed: reject in-place editing
+    if (tokens[0] === "sed") {
+      for (const t of tokens) {
+        if (t === "-i" || t.startsWith("-i") || t === "--in-place" || t.startsWith("--in-place="))
+          return next();
+      }
+    }
+
     // All subsequent pipeline segments must be safe filters
     for (let i = 1; i < cmds.length; i++) {
       const segArgs = getArgs(cmds[i]);
@@ -49,7 +95,9 @@ const allowSafeReadCommands: Policy = {
     }
 
     const root = call.context.projectRoot;
-    const paths = tokens.slice(1).filter((t) => !t.startsWith("-"));
+    const paths = tokens[0] === "sed"
+      ? getSedFilePaths(tokens)
+      : tokens.slice(1).filter((t) => !t.startsWith("-"));
 
     // No file args — allowed only if cwd is in project
     if (paths.length === 0) {

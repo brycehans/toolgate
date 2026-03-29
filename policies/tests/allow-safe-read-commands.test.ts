@@ -31,6 +31,11 @@ describe("allow-safe-read-commands", () => {
       "diff src/a.ts src/b.ts",
       "cut -d: -f1 data.csv",
       "tr a-z A-Z",
+      "sed -n '11,18p' src/index.ts",
+      "sed -n '5p' README.md",
+      "sed 's/foo/bar/' src/index.ts",
+      "sed -e '/pattern/d' src/index.ts",
+      "sed -n '/pattern/p' src/index.ts",
     ];
 
     for (const cmd of allowed) {
@@ -48,6 +53,7 @@ describe("allow-safe-read-commands", () => {
       "cat README.md | grep TODO | wc -l",
       "du -sh src/* | sort -rh | head -5",
       "diff src/a.ts src/b.ts | head -50",
+      "sed -n '1,10p' src/index.ts | grep TODO",
     ];
 
     for (const cmd of allowed) {
@@ -69,6 +75,23 @@ describe("allow-safe-read-commands", () => {
       "file /usr/bin/ls",
       "du -sh /",
       "diff /etc/hosts /tmp/hosts",
+    ];
+
+    for (const cmd of rejected) {
+      it(`rejects: ${cmd}`, async () => {
+        const result = await allowSafeReadCommands.handler(bash(cmd));
+        expect(result.verdict).toBe(NEXT);
+      });
+    }
+  });
+
+  describe("rejects sed with in-place editing", () => {
+    const rejected = [
+      "sed -i 's/foo/bar/' src/index.ts",
+      "sed -i'' 's/foo/bar/' src/index.ts",
+      "sed -i.bak 's/foo/bar/' src/index.ts",
+      "sed --in-place 's/foo/bar/' src/index.ts",
+      "sed --in-place=.bak 's/foo/bar/' src/index.ts",
     ];
 
     for (const cmd of rejected) {

@@ -4,7 +4,7 @@ import { safeBashCommandOrPipeline } from "./parse-bash-ast";
 const readOnlySubcommands: Record<string, Set<string>> = {
   issue: new Set(["view", "list"]),
   pr: new Set(["view", "list", "diff", "checks"]),
-  run: new Set(["view", "list"]),
+  run: new Set(["view", "list", "watch"]),
   search: new Set(["issues", "prs", "repos", "code", "commits"]),
   repo: new Set(["view"]),
   release: new Set(["view", "list"]),
