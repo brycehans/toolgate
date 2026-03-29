@@ -26,9 +26,18 @@ import allowGitRevParse from "./allow-git-rev-parse";
 import allowCdInProject from "./allow-cd-in-project";
 import allowGitWorktree from "./allow-git-worktree";
 import allowReadOnlyGitBranch from "./allow-git-branch";
+import allowGitCheckoutB from "./allow-git-checkout-b";
 import allowSafeReadCommands from "./allow-safe-read-commands";
+import allowPureAndChains from "./allow-pure-and-chains";
 import allowReadPluginCache from "./allow-read-plugin-cache";
 import allowEditInProject from "./allow-edit-in-project";
+import allowWebSearch from "./allow-web-search";
+import allowWebFetch from "./allow-web-fetch";
+import allowMcpContext7 from "./allow-mcp-context7";
+import allowMcpIdeDiagnostics from "./allow-mcp-ide-diagnostics";
+import allowPlanMode from "./allow-plan-mode";
+import allowMkdirInProject from "./allow-mkdir-in-project";
+import allowAskUser from "./allow-ask-user";
 
 export const builtinPolicies = [
   denyGitAddAndCommit,
@@ -59,7 +68,16 @@ export const builtinPolicies = [
   allowCdInProject,
   allowGitWorktree,
   allowReadOnlyGitBranch,
+  allowGitCheckoutB,
   allowSafeReadCommands,
+  allowPureAndChains,
   allowReadPluginCache,
   allowEditInProject,
+  allowWebSearch,
+  allowWebFetch,
+  allowMcpContext7,
+  allowMcpIdeDiagnostics,
+  allowMkdirInProject,
+  allowPlanMode,
+  allowAskUser,
 ];
