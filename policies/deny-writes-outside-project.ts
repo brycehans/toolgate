@@ -1,7 +1,7 @@
 import { homedir } from "os";
 import { resolve } from "path";
 import { allow, deny, next, type Policy } from "../src";
-import { parseShell, findWriteRedirects, findTeeTargets, getRedirects, Op, wordToString } from "./parse-bash-ast";
+import { parseShell, findWriteRedirects, findTeeTargets, findWriteCommandTargets, getRedirects, Op, wordToString } from "./parse-bash-ast";
 
 const SAFE_WRITE_TARGETS = new Set(["/dev/null", "/dev/stderr", "/dev/stdout"]);
 
@@ -47,6 +47,15 @@ const denyWritesOutsideProject: Policy = {
         const resolved = resolvePath(target, cwd);
         if (resolved && !isInsideProject(resolved, projectRoot)) {
           return deny(`Write blocked: redirect target is outside project root (${projectRoot})`);
+        }
+      }
+
+      // Check write command destinations (cp, mv, install)
+      const writeTargets = findWriteCommandTargets(ast);
+      for (const target of writeTargets) {
+        const resolved = resolvePath(target, cwd);
+        if (resolved && !isInsideProject(resolved, projectRoot)) {
+          return deny(`Write blocked: "${target}" is outside project root. Use ./tmp/ within your project instead.`);
         }
       }
 

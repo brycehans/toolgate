@@ -178,6 +178,65 @@ describe("deny-writes-outside-project", () => {
     });
   });
 
+  describe("denies write commands (cp/mv/install) outside project", () => {
+    it("denies cp to /tmp", async () => {
+      const result = await denyWritesOutsideProject.handler(
+        bash("cp src/file.ts /tmp/file.ts"),
+      );
+      expect(result.verdict).toBe(DENY);
+      expect(result.reason).toContain("Use ./tmp/ within your project instead");
+    });
+
+    it("denies cp in && chain to /tmp", async () => {
+      const result = await denyWritesOutsideProject.handler(
+        bash("cp /home/user/project/a /tmp/a-backup && cp /home/user/project/b /tmp/b-backup"),
+      );
+      expect(result.verdict).toBe(DENY);
+    });
+
+    it("denies mv to outside project", async () => {
+      const result = await denyWritesOutsideProject.handler(
+        bash("mv src/old.ts /home/user/other/old.ts"),
+      );
+      expect(result.verdict).toBe(DENY);
+    });
+
+    it("denies install to outside project", async () => {
+      const result = await denyWritesOutsideProject.handler(
+        bash("install -D src/bin /usr/local/bin/tool"),
+      );
+      expect(result.verdict).toBe(DENY);
+    });
+
+    it("denies cp to tilde path", async () => {
+      const result = await denyWritesOutsideProject.handler(
+        bash("cp src/file.ts ~/backup.ts"),
+      );
+      expect(result.verdict).toBe(DENY);
+    });
+
+    it("allows cp within project", async () => {
+      const result = await denyWritesOutsideProject.handler(
+        bash("cp src/a.ts src/b.ts"),
+      );
+      expect(result.verdict).toBe(NEXT);
+    });
+
+    it("allows cp to relative path in project", async () => {
+      const result = await denyWritesOutsideProject.handler(
+        bash("cp src/a.ts ./tmp/backup.ts"),
+      );
+      expect(result.verdict).toBe(NEXT);
+    });
+
+    it("passes through cp with no projectRoot", async () => {
+      const result = await denyWritesOutsideProject.handler(
+        bash("cp src/a.ts /tmp/a.ts", null),
+      );
+      expect(result.verdict).toBe(NEXT);
+    });
+  });
+
   describe("allows safe write targets", () => {
     it("allows redirect to /dev/null", async () => {
       const result = await denyWritesOutsideProject.handler(bash("cat foo 2>/dev/null"));

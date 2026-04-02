@@ -13,6 +13,7 @@ import allowGitLog from "./allow-git-log";
 import allowGitStatus from "./allow-git-status";
 import allowGrepInProject from "./allow-grep-in-project";
 import allowLsInProject from "./allow-ls-in-project";
+import allowAgent from "./allow-agent";
 import allowExploreInProject from "./allow-explore-in-project";
 import allowReadInProject from "./allow-read-in-project";
 import allowSearchInProject from "./allow-search-in-project";
@@ -23,7 +24,9 @@ import allowTaskCrud from "./allow-task-crud";
 import allowGhReadOnly from "./allow-gh-read-only";
 import allowBashFindInProject from "./allow-bash-find-in-project";
 import allowSuperpowersSkills from "./allow-superpowers-skills";
+import allowGitCheckIgnore from "./allow-git-check-ignore";
 import allowGitRevParse from "./allow-git-rev-parse";
+import allowGitStash from "./allow-git-stash";
 import allowCdInProject from "./allow-cd-in-project";
 import allowGitWorktree from "./allow-git-worktree";
 import allowReadOnlyGitBranch from "./allow-git-branch";
@@ -43,6 +46,7 @@ import allowToolSearch from "./allow-tool-search";
 import allowGitLocalRepo from "./allow-git-local-repo";
 import allowCronCrud from "./allow-cron-crud";
 import allowRmProjectTmp from "./allow-rm-project-tmp";
+import allowSleep from "./allow-sleep";
 
 export const builtinPolicies = [
   denyGitAddAndCommit,
@@ -60,6 +64,7 @@ export const builtinPolicies = [
   allowGitStatus,
   allowGrepInProject,
   allowLsInProject,
+  allowAgent,
   allowExploreInProject,
   allowReadInProject,
   allowSearchInProject,
@@ -70,11 +75,13 @@ export const builtinPolicies = [
   allowGhReadOnly,
   allowBashFindInProject,
   allowSuperpowersSkills,
+  allowGitCheckIgnore,
   allowGitRevParse,
   allowCdInProject,
   allowGitWorktree,
   allowReadOnlyGitBranch,
   allowGitCheckoutB,
+  allowGitStash,
   allowGitLocalRepo,
   allowSafeReadCommands,
   allowPureAndChains,
@@ -90,4 +97,5 @@ export const builtinPolicies = [
   allowToolSearch,
   allowCronCrud,
   allowRmProjectTmp,
+  allowSleep,
 ];

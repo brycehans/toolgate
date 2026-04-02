@@ -544,6 +544,34 @@ export function findTeeTargets(file: ShellFile): string[] {
   return targets;
 }
 
+const WRITE_COMMANDS = new Set(["cp", "mv", "install"]);
+
+/**
+ * Find destination paths of file-writing commands (cp, mv, install).
+ * Returns the last non-flag positional argument of each matching command,
+ * which is the destination/target path.
+ */
+export function findWriteCommandTargets(file: ShellFile): string[] {
+  const targets: string[] = [];
+  for (const stmt of file.Stmts) {
+    walkStmts(stmt, (s) => {
+      if (!s.Cmd || s.Cmd.Type !== "CallExpr") return;
+      const call = s.Cmd as CallExpr;
+      const args = call.Args ?? [];
+      if (args.length < 3) return; // need at least: cmd src dest
+      const cmdName = wordToString(args[0]);
+      if (!cmdName || !WRITE_COMMANDS.has(cmdName)) return;
+      // Last argument is the destination
+      const lastArg = args[args.length - 1];
+      const val = wordToString(lastArg);
+      if (val !== null && !val.startsWith("-")) {
+        targets.push(val);
+      }
+    });
+  }
+  return targets;
+}
+
 export function findGitSubcommands(file: ShellFile): string[] {
   const subcommands: string[] = [];
   for (const stmt of file.Stmts) {
