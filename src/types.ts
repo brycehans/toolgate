@@ -10,6 +10,7 @@ export interface CallContext {
   cwd: string;
   env: Record<string, string>;
   projectRoot: string;
+  additionalDirs: string[];
 }
 
 export type VerdictResult =

@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { allow, next, type Policy } from "../src";
+import { allow, next, isWithinProject, type Policy } from "../src";
 import { safeBashCommand } from "./parse-bash-ast";
 
 const allowMkdirInProject: Policy = {
@@ -17,7 +17,7 @@ const allowMkdirInProject: Policy = {
 
     const allInProject = paths.every((p) => {
       const resolved = resolve(call.context.cwd, p);
-      return resolved === root || resolved.startsWith(root + "/");
+      return isWithinProject(resolved, call.context);
     });
 
     return allInProject ? allow() : next();

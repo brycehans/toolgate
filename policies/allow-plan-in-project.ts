@@ -1,4 +1,4 @@
-import { allow, next, type Policy } from "../src";
+import { allow, next, isWithinProject, type Policy } from "../src";
 
 /**
  * Allow Plan tool calls when the path is within the project root.
@@ -20,21 +20,14 @@ const allowPlanInProject: Policy = {
 
     // No path specified — Plan defaults to cwd
     if (searchPath === undefined) {
-      if (call.context.cwd.startsWith(call.context.projectRoot)) {
-        return allow();
-      }
-      return next();
+      return isWithinProject(call.context.cwd, call.context) ? allow() : next();
     }
 
     if (typeof searchPath !== "string") {
       return next();
     }
 
-    if (searchPath.startsWith(call.context.projectRoot + "/") || searchPath === call.context.projectRoot) {
-      return allow();
-    }
-
-    return next();
+    return isWithinProject(searchPath, call.context) ? allow() : next();
   },
 };
 export default allowPlanInProject;

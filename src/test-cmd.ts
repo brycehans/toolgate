@@ -2,6 +2,7 @@ import { loadConfigs } from './config'
 import { runPolicyWithTrace } from './policy'
 import { ALLOW, DENY, NEXT } from './verdicts'
 import type { ToolCall } from './types'
+import { loadAdditionalDirs } from './project-dirs'
 
 export async function testTool(tool: string, args: Record<string, any>, why = false): Promise<void> {
   const cwd = process.cwd()
@@ -12,6 +13,7 @@ export async function testTool(tool: string, args: Record<string, any>, why = fa
       cwd,
       env: Object.fromEntries(Object.entries(process.env).filter(([, v]) => v !== undefined)) as Record<string, string>,
       projectRoot: cwd,
+      additionalDirs: loadAdditionalDirs(cwd),
     },
   }
 

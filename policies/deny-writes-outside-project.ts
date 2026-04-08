@@ -1,6 +1,6 @@
 import { homedir } from "os";
 import { resolve } from "path";
-import { allow, deny, next, type Policy } from "../src";
+import { allow, deny, next, isWithinProject, type Policy } from "../src";
 import { parseShell, findWriteRedirects, findTeeTargets, findWriteCommandTargets, getRedirects, Op, wordToString } from "./parse-bash-ast";
 
 const SAFE_WRITE_TARGETS = new Set(["/dev/null", "/dev/stderr", "/dev/stdout"]);
@@ -15,7 +15,7 @@ const denyWritesOutsideProject: Policy = {
     if (call.tool === "Write" || call.tool === "Edit") {
       const filePath = call.args.file_path;
       if (typeof filePath !== "string") return next();
-      if (!isInsideProject(filePath, projectRoot)) {
+      if (!isInsideProject(filePath, call.context)) {
         return deny(`Write blocked: ${filePath} is outside project root (${projectRoot})`);
       }
       return next();
@@ -35,7 +35,7 @@ const denyWritesOutsideProject: Policy = {
       for (const r of writeRedirects) {
         if (!r.target) continue;
         const resolved = resolvePath(r.target, cwd);
-        if (resolved && !isInsideProject(resolved, projectRoot)) {
+        if (resolved && !isInsideProject(resolved, call.context)) {
           return deny(`Write blocked: redirect target is outside project root (${projectRoot})`);
         }
       }
@@ -45,7 +45,7 @@ const denyWritesOutsideProject: Policy = {
       for (const target of teeTargets) {
         if (SAFE_WRITE_TARGETS.has(target)) continue;
         const resolved = resolvePath(target, cwd);
-        if (resolved && !isInsideProject(resolved, projectRoot)) {
+        if (resolved && !isInsideProject(resolved, call.context)) {
           return deny(`Write blocked: redirect target is outside project root (${projectRoot})`);
         }
       }
@@ -54,7 +54,7 @@ const denyWritesOutsideProject: Policy = {
       const writeTargets = findWriteCommandTargets(ast);
       for (const target of writeTargets) {
         const resolved = resolvePath(target, cwd);
-        if (resolved && !isInsideProject(resolved, projectRoot)) {
+        if (resolved && !isInsideProject(resolved, call.context)) {
           return deny(`Write blocked: "${target}" is outside project root. Use ./tmp/ within your project instead.`);
         }
       }
@@ -77,8 +77,8 @@ const denyWritesOutsideProject: Policy = {
 };
 export default denyWritesOutsideProject;
 
-function isInsideProject(filePath: string, projectRoot: string): boolean {
-  return SAFE_WRITE_TARGETS.has(filePath) || filePath === projectRoot || filePath.startsWith(projectRoot + "/");
+function isInsideProject(filePath: string, context: { projectRoot: string; additionalDirs: string[] }): boolean {
+  return SAFE_WRITE_TARGETS.has(filePath) || isWithinProject(filePath, context);
 }
 
 function resolvePath(p: string, cwd: string): string | null {

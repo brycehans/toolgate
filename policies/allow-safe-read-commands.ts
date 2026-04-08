@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { allow, next, type Policy } from "../src";
+import { allow, next, isWithinProject, type Policy } from "../src";
 import { parseShell, getPipelineCommands, getArgs, isSafeFilter } from "./parse-bash-ast";
 
 /**
@@ -58,9 +58,9 @@ function getSedFilePaths(tokens: string[]): string[] {
   return paths;
 }
 
-function isInProject(path: string, cwd: string, root: string): boolean {
+function isInProject(path: string, cwd: string, context: { projectRoot: string; additionalDirs: string[] }): boolean {
   const resolved = resolve(cwd, path);
-  return resolved === root || resolved.startsWith(root + "/");
+  return isWithinProject(resolved, context);
 }
 
 const allowSafeReadCommands: Policy = {
@@ -94,19 +94,18 @@ const allowSafeReadCommands: Policy = {
       if (!segArgs || !isSafeFilter(segArgs)) return next();
     }
 
-    const root = call.context.projectRoot;
     const paths = tokens[0] === "sed"
       ? getSedFilePaths(tokens)
       : tokens.slice(1).filter((t) => !t.startsWith("-"));
 
     // No file args — allowed only if cwd is in project
     if (paths.length === 0) {
-      return isInProject(call.context.cwd, call.context.cwd, root)
+      return isInProject(call.context.cwd, call.context.cwd, call.context)
         ? allow()
         : next();
     }
 
-    const allInProject = paths.every((p) => isInProject(p, call.context.cwd, root));
+    const allInProject = paths.every((p) => isInProject(p, call.context.cwd, call.context));
     return allInProject ? allow() : next();
   },
 };

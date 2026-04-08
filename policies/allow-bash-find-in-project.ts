@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { allow, next, type Policy } from "../src";
+import { allow, next, isWithinProject, type Policy } from "../src";
 import { parseShell, getPipelineCommands, getArgs, isSafeFilter } from "./parse-bash-ast";
 
 const allowBashFindInProject: Policy = {
@@ -50,15 +50,12 @@ const allowBashFindInProject: Policy = {
     }
 
     if (paths.length === 0) {
-      if (call.context.cwd.startsWith(root + "/") || call.context.cwd === root) {
-        return allow();
-      }
-      return next();
+      return isWithinProject(call.context.cwd, call.context) ? allow() : next();
     }
 
     const allInProject = paths.every((p) => {
       const resolved = resolve(call.context.cwd, p);
-      return resolved.startsWith(root + "/") || resolved === root;
+      return isWithinProject(resolved, call.context);
     });
 
     return allInProject ? allow() : next();

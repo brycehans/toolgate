@@ -237,6 +237,28 @@ describe("deny-writes-outside-project", () => {
     });
   });
 
+  describe("allows writes to additionalDirs", () => {
+    it("allows Write to file in additional directory", async () => {
+      const call: ToolCall = {
+        tool: "Write",
+        args: { file_path: "/shared/lib/utils.ts" },
+        context: { cwd: "/home/user/project", env: {}, projectRoot: "/home/user/project", additionalDirs: ["/shared/lib"] },
+      };
+      const result = await denyWritesOutsideProject.handler(call);
+      expect(result.verdict).toBe(NEXT);
+    });
+
+    it("denies Write outside both project and additional dirs", async () => {
+      const call: ToolCall = {
+        tool: "Write",
+        args: { file_path: "/etc/passwd" },
+        context: { cwd: "/home/user/project", env: {}, projectRoot: "/home/user/project", additionalDirs: ["/shared/lib"] },
+      };
+      const result = await denyWritesOutsideProject.handler(call);
+      expect(result.verdict).toBe(DENY);
+    });
+  });
+
   describe("allows safe write targets", () => {
     it("allows redirect to /dev/null", async () => {
       const result = await denyWritesOutsideProject.handler(bash("cat foo 2>/dev/null"));

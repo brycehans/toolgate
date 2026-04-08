@@ -1,4 +1,4 @@
-import { allow, next, type Policy } from "../src";
+import { allow, next, isWithinProject, type Policy } from "../src";
 import { parseShell, getPipelineCommands, getArgs, isSafeFilter } from "./parse-bash-ast";
 
 const allowLsInProject: Policy = {
@@ -28,15 +28,14 @@ const allowLsInProject: Policy = {
     const paths = tokens.slice(1).filter((t) => !t.startsWith("-"));
 
     if (paths.length === 0) {
-      if (call.context.cwd.startsWith(root + "/") || call.context.cwd === root) {
-        return allow();
-      }
-      return next();
+      return isWithinProject(call.context.cwd, call.context) ? allow() : next();
     }
 
-    const allInProject = paths.every(
-      (p) => p.startsWith(root + "/") || p === root || p.startsWith("./") || p === "." || !p.startsWith("/"),
-    );
+    const allInProject = paths.every((p) => {
+      // Relative paths are resolved against cwd which is already in-project
+      if (p.startsWith("./") || p === "." || !p.startsWith("/")) return true;
+      return isWithinProject(p, call.context);
+    });
 
     return allInProject ? allow() : next();
   },

@@ -88,6 +88,48 @@ describe("allow-grep-in-project", () => {
     });
   });
 
+  describe("allows grep in additionalDirs", () => {
+    it("allows path in additional directory", async () => {
+      const call: ToolCall = {
+        tool: "Grep",
+        args: { pattern: "foo", path: "/shared/lib/utils.ts" },
+        context: { cwd: PROJECT, env: {}, projectRoot: PROJECT, additionalDirs: ["/shared/lib"] },
+      };
+      const result = await allowGrepInProject.handler(call);
+      expect(result.verdict).toBe(ALLOW);
+    });
+
+    it("allows additional directory root", async () => {
+      const call: ToolCall = {
+        tool: "Grep",
+        args: { pattern: "foo", path: "/shared/lib" },
+        context: { cwd: PROJECT, env: {}, projectRoot: PROJECT, additionalDirs: ["/shared/lib"] },
+      };
+      const result = await allowGrepInProject.handler(call);
+      expect(result.verdict).toBe(ALLOW);
+    });
+
+    it("rejects path outside both project and additional dirs", async () => {
+      const call: ToolCall = {
+        tool: "Grep",
+        args: { pattern: "foo", path: "/secret/data" },
+        context: { cwd: PROJECT, env: {}, projectRoot: PROJECT, additionalDirs: ["/shared/lib"] },
+      };
+      const result = await allowGrepInProject.handler(call);
+      expect(result.verdict).toBe(NEXT);
+    });
+
+    it("allows no-path grep when cwd is in additional dir", async () => {
+      const call: ToolCall = {
+        tool: "Grep",
+        args: { pattern: "foo" },
+        context: { cwd: "/shared/lib/src", env: {}, projectRoot: PROJECT, additionalDirs: ["/shared/lib"] },
+      };
+      const result = await allowGrepInProject.handler(call);
+      expect(result.verdict).toBe(ALLOW);
+    });
+  });
+
   it("passes through non-Grep tools", async () => {
     const call: ToolCall = {
       tool: "Bash",

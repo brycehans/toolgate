@@ -3,6 +3,7 @@ import { ALLOW, DENY, NEXT } from './verdicts'
 import { loadConfigs } from './config'
 import { runPolicy } from './policy'
 import { isSuspended } from './suspend'
+import { loadAdditionalDirs } from './project-dirs'
 interface HookInput {
   tool_name: string
   tool_input: Record<string, any>
@@ -28,6 +29,7 @@ export function buildToolCall(input: HookInput): ToolCall {
       cwd: input.cwd,
       env: Object.fromEntries(Object.entries(process.env).filter(([, v]) => v !== undefined)) as Record<string, string>,
       projectRoot,
+      additionalDirs: loadAdditionalDirs(projectRoot),
     },
   }
 }

@@ -1,7 +1,7 @@
 import { realpathSync } from "fs";
 import { homedir } from "os";
 import { resolve } from "path";
-import { allow, next, type Policy } from "../src";
+import { allow, next, isWithinProject, type Policy } from "../src";
 
 function resolvePath(p: string, projectRoot: string): string {
   if (p === "~") return homedir();
@@ -18,17 +18,13 @@ function tryRealpath(p: string): string | null {
   }
 }
 
-function isWithin(child: string, parent: string): boolean {
-  return child === parent || child.startsWith(parent + "/");
-}
-
 /**
- * Allow file reads (Read tool) when the target is within the project directory.
- * Resolves symlinks to prevent escaping the project via symlinked paths.
+ * Allow file reads (Read tool) when the target is within the project directory
+ * or any additional directory. Resolves symlinks to prevent escaping via symlinked paths.
  */
 const allowReadInProject: Policy = {
   name: "Allow read in project",
-  description: "Permits Read tool calls targeting files within the project root",
+  description: "Permits Read tool calls targeting files within the project root or additional directories",
   handler: async (call) => {
     if (call.tool !== "Read") {
       return next();
@@ -41,24 +37,24 @@ const allowReadInProject: Policy = {
     const filePath = call.args.file_path;
     if (typeof filePath !== "string") return next();
 
-    const projectRoot = call.context.projectRoot;
-    const resolved = resolvePath(filePath, projectRoot);
+    const resolved = resolvePath(filePath, call.context.projectRoot);
 
     // If the file exists, resolve symlinks and check the real path
     const realTarget = tryRealpath(resolved);
-    const realRoot = tryRealpath(projectRoot);
-
-    if (realTarget && realRoot) {
-      return isWithin(realTarget, realRoot) ? allow() : next();
+    if (realTarget) {
+      // Build a context with realpath-resolved dirs for accurate matching
+      const realContext = { ...call.context };
+      const realRoot = tryRealpath(call.context.projectRoot);
+      if (realRoot) {
+        realContext.projectRoot = realRoot;
+        realContext.additionalDirs = (call.context.additionalDirs ?? [])
+          .map((d) => tryRealpath(d) ?? d);
+      }
+      return isWithinProject(realTarget, realContext) ? allow() : next();
     }
 
     // File doesn't exist yet — fall back to string prefix check
-    // only if the normalized path (with .. resolved) is within the project
-    if (realRoot) {
-      return isWithin(resolved, realRoot) ? allow() : next();
-    }
-
-    return isWithin(resolved, projectRoot) ? allow() : next();
+    return isWithinProject(resolved, call.context) ? allow() : next();
   },
 };
 export default allowReadInProject;

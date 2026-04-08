@@ -24,6 +24,7 @@ export async function testPolicy(policies: Policy[], cases: TestCase[]): Promise
         cwd: tc.context?.cwd ?? process.cwd(),
         env: tc.context?.env ?? {},
         projectRoot: tc.context?.projectRoot ?? process.cwd(),
+        additionalDirs: tc.context?.additionalDirs ?? [],
       },
     }
 

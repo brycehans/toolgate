@@ -1,4 +1,4 @@
-import { allow, next, type Policy } from "../src";
+import { allow, next, isWithinProject, type Policy } from "../src";
 
 /**
  * Allow the Explore agent, but only when invoked within the project directory.
@@ -15,7 +15,7 @@ const allowExploreInProject: Policy = {
       return next();
     }
 
-    if (!call.context.projectRoot || !call.context.cwd.startsWith(call.context.projectRoot)) {
+    if (!call.context.projectRoot || !isWithinProject(call.context.cwd, call.context)) {
       return next();
     }
 

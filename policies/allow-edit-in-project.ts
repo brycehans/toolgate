@@ -1,6 +1,6 @@
 import { basename } from "path";
 import { homedir } from "os";
-import { allow, next, type Policy } from "../src";
+import { allow, next, isWithinProject, type Policy } from "../src";
 
 function resolveHome(p: string): string {
   if (p === "~") return homedir();
@@ -33,9 +33,15 @@ const SENSITIVE_PATTERNS: Array<{ match: (rel: string) => boolean; reason: strin
   { match: (rel) => basename(rel) === "toolgate.config.ts", reason: "controls toolgate policy evaluation" },
 ];
 
-function isSensitive(filePath: string, projectRoot: string): boolean {
-  const rel = filePath.slice(projectRoot.length + 1);
-  return SENSITIVE_PATTERNS.some(({ match }) => match(rel));
+function isSensitive(filePath: string, context: { projectRoot: string; additionalDirs: string[] }): boolean {
+  const dirs = [context.projectRoot, ...(context.additionalDirs ?? [])];
+  for (const dir of dirs) {
+    if (filePath === dir || filePath.startsWith(dir + "/")) {
+      const rel = filePath.slice(dir.length + 1);
+      return SENSITIVE_PATTERNS.some(({ match }) => match(rel));
+    }
+  }
+  return false;
 }
 
 const allowEditInProject: Policy = {
@@ -51,8 +57,8 @@ const allowEditInProject: Policy = {
     if (!projectRoot) return next();
 
     const resolved = resolveHome(filePath);
-    if (resolved === projectRoot || resolved.startsWith(projectRoot + "/")) {
-      if (isSensitive(resolved, projectRoot)) return next();
+    if (isWithinProject(resolved, call.context)) {
+      if (isSensitive(resolved, call.context)) return next();
       return allow();
     }
 

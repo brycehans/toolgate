@@ -5,6 +5,7 @@ import { loadConfigs } from './config'
 import { runPolicyWithTrace } from './policy'
 import { ALLOW, DENY, NEXT } from './verdicts'
 import type { ToolCall } from './types'
+import { loadAdditionalDirs } from './project-dirs'
 
 interface SettingsJson {
   permissions?: {
@@ -108,6 +109,7 @@ export async function auditPermissions(format: 'table' | 'json' = 'table'): Prom
 
   const policies = await loadConfigs(cwd)
   const projectRoot = cwd
+  const additionalDirs = loadAdditionalDirs(projectRoot)
 
   const results: { file: string; results: AuditResult[] }[] = []
 
@@ -133,6 +135,7 @@ export async function auditPermissions(format: 'table' | 'json' = 'table'): Prom
             Object.entries(process.env).filter(([, v]) => v !== undefined)
           ) as Record<string, string>,
           projectRoot,
+          additionalDirs,
         },
       }
 

@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 import { resolve } from "node:path";
-import { allow, next, type Policy } from "../src";
+import { allow, next, isWithinProject, type Policy } from "../src";
 import { parseShell, getArgs } from "./parse-bash-ast";
 
 function expandTilde(p: string): string {
@@ -31,12 +31,7 @@ const allowCdInProject: Policy = {
 
     // resolve the target path relative to cwd, expanding ~ first
     const target = resolve(call.context.cwd, expandTilde(args[1]));
-
-    if (target === root || target.startsWith(root + "/")) {
-      return allow();
-    }
-
-    return next();
+    return isWithinProject(target, call.context) ? allow() : next();
   },
 };
 export default allowCdInProject;
