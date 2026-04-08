@@ -111,6 +111,24 @@ describe("loadAdditionalDirs", () => {
     expect(dirs).not.toContain(tmp);
   });
 
+  it("expands tilde paths", () => {
+    const tmp = mkdtempSync(join(tmpdir(), "toolgate-test-"));
+    const claudeDir = join(tmp, ".claude");
+    mkdirSync(claudeDir);
+    writeFileSync(
+      join(claudeDir, "settings.json"),
+      JSON.stringify({
+        permissions: { additionalDirectories: ["~/Dev/KOSites"] },
+      }),
+    );
+
+    const dirs = loadAdditionalDirs(tmp);
+    const home = require("os").homedir();
+    expect(dirs).toContain(join(home, "Dev/KOSites"));
+    // Should NOT contain literal tilde
+    expect(dirs.every((d) => !d.includes("~"))).toBe(true);
+  });
+
   it("returns empty array when no settings exist", () => {
     const tmp = mkdtempSync(join(tmpdir(), "toolgate-test-"));
     const dirs = loadAdditionalDirs(tmp);

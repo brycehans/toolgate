@@ -32,7 +32,10 @@ export function loadAdditionalDirs(projectRoot: string): string[] {
       if (!Array.isArray(additional)) continue;
       for (const dir of additional) {
         if (typeof dir !== "string") continue;
-        const resolved = resolve(projectRoot, dir);
+        const expanded = dir === "~" ? homedir()
+          : dir.startsWith("~/") ? homedir() + dir.slice(1)
+          : dir;
+        const resolved = resolve(projectRoot, expanded);
         dirs.add(resolved);
       }
     } catch {
