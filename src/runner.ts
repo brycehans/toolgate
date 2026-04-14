@@ -17,6 +17,7 @@ interface HookResponse {
     hookEventName: 'PreToolUse'
     permissionDecision: 'allow' | 'deny' | 'ask'
     permissionDecisionReason?: string
+    additionalContext?: string
   }
 }
 
@@ -55,11 +56,12 @@ export function buildHookResponse(verdict: VerdictResult): HookResponse {
   }
 
   // NEXT — chain exhausted, ask the user
+  const reason = 'reason' in verdict && verdict.reason ? verdict.reason : undefined
   return {
     hookSpecificOutput: {
       hookEventName: 'PreToolUse',
       permissionDecision: 'ask',
-      ...('reason' in verdict && verdict.reason ? { permissionDecisionReason: verdict.reason } : {}),
+      ...(reason ? { permissionDecisionReason: reason, additionalContext: reason } : {}),
     },
   }
 }

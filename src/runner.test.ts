@@ -42,9 +42,10 @@ describe('buildHookResponse', () => {
     expect(response.hookSpecificOutput.permissionDecisionReason).toBeUndefined()
   })
 
-  it('maps warn to ask with reason', () => {
+  it('maps warn to ask with reason and additionalContext', () => {
     const response = buildHookResponse(warn('sensitive operation'))
     expect(response.hookSpecificOutput.permissionDecision).toBe('ask')
     expect(response.hookSpecificOutput.permissionDecisionReason).toBe('⚠️  sensitive operation')
+    expect(response.hookSpecificOutput.additionalContext).toBe('⚠️  sensitive operation')
   })
 })
