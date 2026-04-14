@@ -21,6 +21,8 @@ export async function runPolicy(policies: Policy[], call: ToolCall): Promise<Ver
 }
 
 export async function runPolicyWithTrace(policies: Policy[], call: ToolCall): Promise<TracedResult> {
+  let lastWarn: { result: VerdictResult; index: number; name: string | null; description: string | null } | null = null
+
   for (let i = 0; i < policies.length; i++) {
     const policy = policies[i]
     const result = await policy.handler(call)
@@ -35,7 +37,12 @@ export async function runPolicyWithTrace(policies: Policy[], call: ToolCall): Pr
     if (result.verdict !== NEXT) {
       return { result, index: i, name: policy.name, description: policy.description }
     }
+
+    // Preserve the first NEXT-with-reason (from warn()) so it surfaces in the ask prompt
+    if (!lastWarn && 'reason' in result && result.reason) {
+      lastWarn = { result, index: i, name: policy.name, description: policy.description }
+    }
   }
 
-  return { result: next(), index: -1, name: null, description: null }
+  return lastWarn ?? { result: next(), index: -1, name: null, description: null }
 }
