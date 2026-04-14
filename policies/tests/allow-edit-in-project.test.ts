@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { homedir } from "os";
-import { ALLOW, NEXT, type ToolCall } from "toolgate";
+import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowEditInProject from "../allow-edit-in-project";
 
 const PROJECT = "/home/user/project";

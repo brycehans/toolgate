@@ -2,7 +2,7 @@ import { describe, expect, it, beforeAll, afterAll } from "bun:test";
 import { mkdirSync, symlinkSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
-import { ALLOW, NEXT, type ToolCall } from "toolgate";
+import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowReadInProject from "../allow-read-in-project";
 
 const PROJECT = "/home/user/project";

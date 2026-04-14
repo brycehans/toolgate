@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { ALLOW, NEXT, type ToolCall } from "toolgate";
+import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowGitLog from "../allow-git-log";
 
 function bash(command: string): ToolCall {

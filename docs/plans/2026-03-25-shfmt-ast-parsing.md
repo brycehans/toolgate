@@ -246,7 +246,7 @@ import {
   getRedirects,
   Op,
 } from "../parse-bash-ast";
-import type { ToolCall } from "toolgate";
+import type { ToolCall } from "@brycehanscomb/toolgate";
 
 // ... existing parseShell tests ...
 

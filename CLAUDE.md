@@ -61,7 +61,7 @@ When creating a new policy or renaming an existing one, you **must** update `pol
 
 - **Whitelist approach**: Policies explicitly allow known-safe patterns; everything else falls through as `next()` (prompts user)
 - **Shell command safety**: Use `shfmt --tojson` (via `policies/parse-bash-ast.ts`) to parse Bash commands into typed ASTs. Use `safeBashCommand()` for simple commands, `safeBashCommandOrPipeline()` for commands that may pipe to safe filters, or `getAndChainSegments()` to decompose `&&` chains into leaf statements. These reject unsafe patterns (substitution, chaining, background, unsafe redirects) at the AST level.
-- **Self-imports in tests**: Policy tests import from `"toolgate"` (package self-reference) instead of relative `../../../src` paths
+- **Self-imports in tests**: Policy tests import from `"@brycehanscomb/toolgate"` (package self-reference) instead of relative `../../../src` paths
 - **Policy handlers are async**: All handlers return `Promise<VerdictResult>`
 - **Testing policy handlers directly**: Policy tests call `policyObj.handler(call)` to test the handler function
 
@@ -112,6 +112,10 @@ New policies must be inserted at the correct position. First non-`next()` verdic
 | Pattern is useful across projects | Deeply project-specific |
 | Command can be safely parsed with `safeBashCommand` | Command is hard to scope safely (e.g., `xargs`) |
 | You want deny semantics with a message | Simple allow is sufficient |
+
+## Versioning
+
+**Bump `version` in `package.json` before pushing to remote.** Every push must include a version bump — patch for fixes, minor for new policies or features, major for breaking changes. If you forget, the push should be rejected or amended.
 
 ## Gotchas
 

@@ -438,7 +438,7 @@ This is why `safeBashCommand()` rejects all chaining, and why `allow-pure-and-ch
 
 ```ts
 import { describe, expect, it } from "bun:test";
-import { ALLOW, DENY, NEXT, type ToolCall } from "toolgate";
+import { ALLOW, DENY, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import myPolicy from "../my-policy";
 
 // Helper to construct a ToolCall for Bash
@@ -567,7 +567,7 @@ it("passes through when no project root", async () => {
 For testing how multiple policies interact (e.g., deny before allow), use the `testPolicy()` helper:
 
 ```ts
-import { testPolicy } from "toolgate";
+import { testPolicy } from "@brycehanscomb/toolgate";
 
 await testPolicy([denyPolicy, allowPolicy], [
   { tool: "Bash", args: { command: "git add . && git commit -m 'x'" }, expect: "deny" },

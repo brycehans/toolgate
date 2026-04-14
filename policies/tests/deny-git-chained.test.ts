@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { DENY, NEXT, type ToolCall } from "toolgate";
+import { DENY, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import denyGitChained from "../deny-git-chained";
 
 const PROJECT = "/home/user/project";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import type { ToolCall } from "toolgate";
+import type { ToolCall } from "@brycehanscomb/toolgate";
 import {
   Op,
   parseShell,

@@ -1,5 +1,5 @@
 import { describe, expect, it, mock, beforeEach } from "bun:test";
-import { ALLOW, NEXT, type ToolCall } from "toolgate";
+import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 
 // Mock Bun.spawn to simulate `git remote` output
 let spawnOutput = "";

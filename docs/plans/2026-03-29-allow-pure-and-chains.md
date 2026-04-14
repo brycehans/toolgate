@@ -248,7 +248,7 @@ Create `policies/tests/allow-pure-and-chains.test.ts`:
 
 ```typescript
 import { describe, expect, it } from "bun:test";
-import { ALLOW, NEXT, type ToolCall } from "toolgate";
+import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowPureAndChains from "../allow-pure-and-chains";
 
 const PROJECT = "/home/user/project";

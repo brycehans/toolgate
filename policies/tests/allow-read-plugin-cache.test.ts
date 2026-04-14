@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { homedir } from "os";
-import { ALLOW, NEXT, type ToolCall } from "toolgate";
+import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowReadPluginCache from "../allow-read-plugin-cache";
 
 const PROJECT = "/home/user/project";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { ALLOW, DENY, NEXT, type ToolCall } from "toolgate";
+import { ALLOW, DENY, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import denyWritesOutsideProject from "../deny-writes-outside-project";
 
 function write(filePath: string, projectRoot: string | null = "/home/user/project"): ToolCall {

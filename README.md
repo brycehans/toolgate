@@ -8,7 +8,7 @@ Claude Code asks permission before running tools like Bash commands, file writes
 
 ```ts
 // toolgate.config.ts — auto-allow curl to localhost
-import { definePolicy, allow, next } from "toolgate";
+import { definePolicy, allow, next } from "@brycehanscomb/toolgate";
 import { safeBashCommand } from "toolgate/policies/parse-bash-ast";
 
 export default definePolicy([
@@ -73,7 +73,7 @@ Both may live at the directory root or inside `.claude/`. Personal configs are e
 Example shared config:
 
 ```ts
-import { definePolicy, deny, next } from "toolgate";
+import { definePolicy, deny, next } from "@brycehanscomb/toolgate";
 
 export default definePolicy([
   {
@@ -96,7 +96,7 @@ Project policies run first (personal before shared), then built-in. The first no
 A policy is an object with `name`, `description`, and an async `handler` function:
 
 ```ts
-import { allow, deny, next, type Policy } from "toolgate";
+import { allow, deny, next, type Policy } from "@brycehanscomb/toolgate";
 
 const denyRmRf: Policy = {
   name: "Deny rm -rf",
@@ -136,7 +136,7 @@ When writing policies for Bash commands, don't parse raw strings with regex — 
 
 ```ts
 import { safeBashCommand } from "toolgate/policies/parse-bash-ast";
-import { allow, next, type Policy } from "toolgate";
+import { allow, next, type Policy } from "@brycehanscomb/toolgate";
 
 const allowMake: Policy = {
   name: "Allow make",
