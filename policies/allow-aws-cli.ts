@@ -1,4 +1,4 @@
-import { allow, deny, next, warn, type Policy } from "../src";
+import { allow, next, type Policy } from "../src";
 import { safeBashCommandOrPipeline } from "./parse-bash-ast";
 
 export interface AwsCliPolicyConfig {
@@ -103,8 +103,6 @@ function mentionsRestrictedAccount(tokens: string[], accountIds: string[]): bool
   return accountIds.length > 0 && tokens.some((t) => accountIds.some((id) => t.includes(id)));
 }
 
-const DENY_MSG =
-  "Do not execute destructive AWS commands directly. Provide the full command for the user to run manually.";
 
 /**
  * Create an AWS CLI policy with custom configuration.
@@ -137,19 +135,17 @@ export function createAwsCliPolicy(config: AwsCliPolicyConfig = {}): Policy {
 
       const profile = extractProfile(tokens);
 
-      // Destructive commands are always denied
-      if (isDestructiveCommand(tokens, extraDestructive)) return deny(DENY_MSG);
+      // Destructive commands — always require approval
+      if (isDestructiveCommand(tokens, extraDestructive)) return next();
 
-      // Restricted account ID mentioned — warn and require approval
-      if (mentionsRestrictedAccount(tokens, restrictedIds))
-        return warn("AWS command targets a restricted account — requires manual approval");
+      // Restricted account ID mentioned — require approval
+      if (mentionsRestrictedAccount(tokens, restrictedIds)) return next();
 
       // ReadOnly profile → auto-allow non-destructive commands
       if (profile && matchesAny(profile, readOnlyPatterns)) return allow();
 
-      // Admin profile → warn and require approval
-      if (profile && matchesAny(profile, adminPatterns))
-        return warn(`AWS command using admin profile "${profile}" — requires manual approval`);
+      // Admin profile → always require approval
+      if (profile && matchesAny(profile, adminPatterns)) return next();
 
       // No profile or unrecognised profile → fall through to prompt
       return next();

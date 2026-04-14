@@ -18,14 +18,6 @@ export function next(): { verdict: typeof NEXT } {
   return { verdict: NEXT }
 }
 
-/**
- * Returns a NEXT verdict with a warning reason — prompts the user for
- * approval with a highlighted message explaining why this needs attention.
- */
-export function warn(reason: string): { verdict: typeof NEXT; reason: string } {
-  return { verdict: NEXT, reason: `⚠️  ${reason}` }
-}
-
 export function isVerdictResult(value: unknown): value is VerdictResult {
   return (
     typeof value === 'object' &&

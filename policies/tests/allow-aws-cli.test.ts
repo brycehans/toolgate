@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { ALLOW, DENY, NEXT, type ToolCall } from "toolgate";
+import { ALLOW, NEXT, type ToolCall } from "toolgate";
 import allowAwsCli, { createAwsCliPolicy } from "../allow-aws-cli";
 
 const PROJECT = "/home/user/project";
@@ -38,8 +38,8 @@ describe("allow-aws-cli", () => {
     }
   });
 
-  describe("denies destructive commands regardless of profile", () => {
-    const denied = [
+  describe("requires approval for destructive commands regardless of profile", () => {
+    const requireApproval = [
       "aws s3 rm s3://my-bucket/key --profile ko-ReadOnly",
       "aws s3 rb s3://my-bucket --profile ko-ReadOnly",
       "aws s3 rm s3://bucket/prefix --recursive --profile ko-Admin",
@@ -58,15 +58,15 @@ describe("allow-aws-cli", () => {
       "aws s3api empty-bucket --bucket my-bucket",
     ];
 
-    for (const cmd of denied) {
-      it(`denies: ${cmd}`, async () => {
+    for (const cmd of requireApproval) {
+      it(`requires approval: ${cmd}`, async () => {
         const result = await allowAwsCli.handler(bash(cmd));
-        expect(result.verdict).toBe(DENY);
+        expect(result.verdict).toBe(NEXT);
       });
     }
   });
 
-  describe("warns and requires approval for Admin profiles (non-destructive)", () => {
+  describe("requires approval for Admin profiles (non-destructive)", () => {
     const requireApproval = [
       "aws s3 ls --profile ko-Admin",
       "aws s3 cp file.txt s3://bucket/key --profile ko-Admin",
@@ -77,11 +77,9 @@ describe("allow-aws-cli", () => {
     ];
 
     for (const cmd of requireApproval) {
-      it(`warns: ${cmd}`, async () => {
+      it(`requires approval: ${cmd}`, async () => {
         const result = await allowAwsCli.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
-        expect("reason" in result && result.reason).toContain("⚠️");
-        expect("reason" in result && result.reason).toContain("admin profile");
       });
     }
   });
@@ -97,8 +95,6 @@ describe("allow-aws-cli", () => {
       it(`falls through: ${cmd}`, async () => {
         const result = await allowAwsCli.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
-        // No warning reason for unknown profiles — just a plain next()
-        expect("reason" in result).toBe(false);
       });
     }
   });
@@ -134,20 +130,19 @@ describe("allow-aws-cli", () => {
     it("matches admin case-insensitively", async () => {
       const result = await allowAwsCli.handler(bash("aws s3 ls --profile ko-admin"));
       expect(result.verdict).toBe(NEXT);
-      expect("reason" in result && result.reason).toContain("⚠️");
     });
   });
 
   describe("catches generic destructive patterns", () => {
-    const denied = [
+    const requireApproval = [
       "aws some-service remove-thing --id 123 --profile ko-ReadOnly",
       "aws some-service destroy-resource --name foo",
     ];
 
-    for (const cmd of denied) {
-      it(`denies: ${cmd}`, async () => {
+    for (const cmd of requireApproval) {
+      it(`requires approval: ${cmd}`, async () => {
         const result = await allowAwsCli.handler(bash(cmd));
-        expect(result.verdict).toBe(DENY);
+        expect(result.verdict).toBe(NEXT);
       });
     }
   });
@@ -179,37 +174,31 @@ describe("createAwsCliPolicy (custom config)", () => {
   });
 
   describe("uses custom admin profiles", () => {
-    it("warns for PowerUser", async () => {
+    it("requires approval for PowerUser", async () => {
       const result = await custom.handler(bash("aws s3 ls --profile ko-PowerUser"));
       expect(result.verdict).toBe(NEXT);
-      expect("reason" in result && result.reason).toContain("⚠️");
     });
 
-    it("warns for FullAccess", async () => {
+    it("requires approval for FullAccess", async () => {
       const result = await custom.handler(bash("aws s3 ls --profile staging-FullAccess"));
       expect(result.verdict).toBe(NEXT);
-      expect("reason" in result && result.reason).toContain("⚠️");
     });
 
     it("does NOT flag default Admin when overridden", async () => {
       const result = await custom.handler(bash("aws s3 ls --profile ko-Admin"));
       expect(result.verdict).toBe(NEXT);
-      // No warning — falls through as unknown profile
-      expect("reason" in result).toBe(false);
     });
   });
 
-  describe("warns for restricted account IDs", () => {
-    it("warns for custom account ID", async () => {
+  describe("requires approval for restricted account IDs", () => {
+    it("requires approval for custom account ID", async () => {
       const result = await custom.handler(
         bash("aws sts assume-role --role-arn arn:aws:iam::111111111111:role/Role --profile ko-SecurityAudit"),
       );
       expect(result.verdict).toBe(NEXT);
-      expect("reason" in result && result.reason).toContain("⚠️");
-      expect("reason" in result && result.reason).toContain("restricted account");
     });
 
-    it("does not warn when no restricted account is mentioned", async () => {
+    it("does not restrict when no account ID mentioned", async () => {
       const result = await custom.handler(
         bash("aws s3 ls --profile ko-SecurityAudit"),
       );
@@ -218,25 +207,25 @@ describe("createAwsCliPolicy (custom config)", () => {
   });
 
   describe("uses extra destructive subcommands", () => {
-    it("denies stop-instances", async () => {
+    it("requires approval for stop-instances", async () => {
       const result = await custom.handler(
         bash("aws ec2 stop-instances --instance-ids i-123 --profile ko-SecurityAudit"),
       );
-      expect(result.verdict).toBe(DENY);
+      expect(result.verdict).toBe(NEXT);
     });
 
-    it("denies reboot-instances", async () => {
+    it("requires approval for reboot-instances", async () => {
       const result = await custom.handler(
         bash("aws ec2 reboot-instances --instance-ids i-123"),
       );
-      expect(result.verdict).toBe(DENY);
+      expect(result.verdict).toBe(NEXT);
     });
 
-    it("still denies built-in destructive commands", async () => {
+    it("still catches built-in destructive commands", async () => {
       const result = await custom.handler(
         bash("aws s3 rm s3://bucket/key --profile ko-SecurityAudit"),
       );
-      expect(result.verdict).toBe(DENY);
+      expect(result.verdict).toBe(NEXT);
     });
   });
 });
