@@ -5,20 +5,33 @@ import type { Policy } from './types'
 import { builtinPolicies } from '../policies'
 
 const CONFIG_FILENAME = 'toolgate.config.ts'
+const LOCAL_CONFIG_FILENAME = 'toolgate.config.local.ts'
 
-export function findConfigInDir(dir: string): string | null {
-  const rootConfig = join(dir, CONFIG_FILENAME)
-  if (existsSync(rootConfig)) return rootConfig
+/**
+ * Find configs in a single directory. Returns paths in priority order:
+ * local (personal, gitignored) before shared (committed). Within each
+ * variant, prefers `./` over `./.claude/`.
+ */
+export function findConfigInDir(dir: string): string[] {
+  const configs: string[] = []
 
-  const claudeConfig = join(dir, '.claude', CONFIG_FILENAME)
-  if (existsSync(claudeConfig)) return claudeConfig
+  const rootLocal = join(dir, LOCAL_CONFIG_FILENAME)
+  const claudeLocal = join(dir, '.claude', LOCAL_CONFIG_FILENAME)
+  if (existsSync(rootLocal)) configs.push(rootLocal)
+  else if (existsSync(claudeLocal)) configs.push(claudeLocal)
 
-  return null
+  const rootShared = join(dir, CONFIG_FILENAME)
+  const claudeShared = join(dir, '.claude', CONFIG_FILENAME)
+  if (existsSync(rootShared)) configs.push(rootShared)
+  else if (existsSync(claudeShared)) configs.push(claudeShared)
+
+  return configs
 }
 
 /**
  * Walk from cwd up to $HOME, collecting all toolgate configs.
- * Returns innermost first (most specific takes priority).
+ * Returns innermost first (most specific takes priority); within a
+ * directory, local configs come before shared ones.
  */
 export function findAllConfigs(cwd: string): string[] {
   const home = homedir()
@@ -26,8 +39,7 @@ export function findAllConfigs(cwd: string): string[] {
   let dir = cwd
 
   while (true) {
-    const config = findConfigInDir(dir)
-    if (config) configs.push(config)
+    configs.push(...findConfigInDir(dir))
 
     if (dir === home || dir === '/') break
     const parent = dirname(dir)
