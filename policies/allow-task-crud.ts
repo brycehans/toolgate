@@ -7,6 +7,7 @@ const TASK_TOOLS = new Set([
   "TaskList",
   "TaskOutput",
   "TaskStop",
+  "TaskOutput",
 ]);
 
 /**

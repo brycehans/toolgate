@@ -186,12 +186,21 @@ export function wordToString(word: Word): string | null {
   return values.join("");
 }
 
+/** Env var assignments that are safe to ignore (benign prefixes). */
+const SAFE_ASSIGNS = new Set(["CI"]);
+
+function hasUnsafeAssigns(cmd: any): boolean {
+  if (!cmd.Assigns || cmd.Assigns.length === 0) return false;
+  return cmd.Assigns.some((a: any) => !SAFE_ASSIGNS.has(a.Name?.Value));
+}
+
 export function getArgs(stmt: Stmt): string[] | null {
   const cmd = stmt.Cmd;
   if (!cmd || cmd.Type !== "CallExpr") return null;
   const call = cmd as CallExpr;
   // Reject commands with env var assignments (e.g. GIT_DIR=. git add .)
-  if ((call as any).Assigns && (call as any).Assigns.length > 0) return null;
+  // unless every assign is in the safe list (e.g. CI=)
+  if (hasUnsafeAssigns(call)) return null;
   const result: string[] = [];
   for (const arg of call.Args ?? []) {
     const s = wordToString(arg);
@@ -503,7 +512,7 @@ export function getAndChainSegments(file: ShellFile): Stmt[] | null {
   if (cmd.Type === "CallExpr") {
     if (hasUnsafeNodes(cmd)) return null;
     if (hasUnsafeRedirects(stmt)) return null;
-    if ((cmd as any).Assigns?.length > 0) return null;
+    if (hasUnsafeAssigns(cmd)) return null;
     return [stmt];
   }
 
@@ -529,7 +538,7 @@ function collectAndLeaves(bin: BinaryCmd, out: Stmt[]): boolean {
     if (left.Background) return false;
     if (hasUnsafeNodes(left.Cmd)) return false;
     if (hasUnsafeRedirects(left)) return false;
-    if ((left.Cmd as any).Assigns?.length > 0) return false;
+    if (hasUnsafeAssigns(left.Cmd)) return false;
     if ((left as any).Comments?.length > 0) return false;
     out.push(left);
   } else {
@@ -546,7 +555,7 @@ function collectAndLeaves(bin: BinaryCmd, out: Stmt[]): boolean {
     if (right.Background) return false;
     if (hasUnsafeNodes(right.Cmd)) return false;
     if (hasUnsafeRedirects(right)) return false;
-    if ((right.Cmd as any).Assigns?.length > 0) return false;
+    if (hasUnsafeAssigns(right.Cmd)) return false;
     if ((right as any).Comments?.length > 0) return false;
     out.push(right);
   } else {

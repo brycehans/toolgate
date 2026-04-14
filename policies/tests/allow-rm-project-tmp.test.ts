@@ -17,7 +17,6 @@ describe("allow-rm-project-tmp", () => {
     const allowed = [
       "rm tmp/commit-msg.txt",
       "rm tmp/gh-comment.md",
-      "rm -f tmp/pr-body.md",
       "rm tmp/a.txt tmp/b.txt",
     ];
 
@@ -34,6 +33,22 @@ describe("allow-rm-project-tmp", () => {
       bash("rm /home/user/project/tmp/file.txt"),
     );
     expect(result.verdict).toBe(ALLOW);
+  });
+
+  describe("requires approval for -r or -f flags in tmp/", () => {
+    const flagged = [
+      "rm -f tmp/pr-body.md",
+      "rm -rf tmp/build-output",
+      "rm -r tmp/nested/dir",
+      "rm -fi tmp/file.txt",
+    ];
+
+    for (const cmd of flagged) {
+      it(`requires approval: ${cmd}`, async () => {
+        const result = await allowRmProjectTmp.handler(bash(cmd));
+        expect(result.verdict).toBe(NEXT);
+      });
+    }
   });
 
   describe("rejects rm outside project tmp/", () => {

@@ -1,10 +1,11 @@
 import denyGitAddAndCommit from "./deny-git-add-and-commit";
 import denyWritesOutsideProject from "./deny-writes-outside-project";
 import denyGitDashC from "./deny-git-dash-c";
-import denyBashGrep from "./deny-bash-grep";
+import allowBashGrepInProject from "./allow-bash-grep-in-project";
 import denyCdChained from "./deny-cd-chained";
 import denyGitChained from "./deny-git-chained";
 import denyGhHeredoc from "./deny-gh-heredoc";
+import denySshCompound from "./deny-ssh-compound";
 import denyMixedPureChains from "./deny-mixed-pure-chains";
 import redirectPlansToProject from "./redirect-plans-to-project";
 import allowBunTest from "./allow-bun-test";
@@ -50,17 +51,22 @@ import allowToolSearch from "./allow-tool-search";
 import allowGitLocalRepo from "./allow-git-local-repo";
 import allowCronCrud from "./allow-cron-crud";
 import allowRmProjectTmp from "./allow-rm-project-tmp";
+import allowNpmInstall from "./allow-npm-install";
+import allowNpxSafe from "./allow-npx-safe";
 import allowSleep from "./allow-sleep";
+import allowNonDestructiveGit from "./allow-non-destructive-git";
+import allowGhIssuePr from "./allow-gh-issue-pr";
+import allowTmux from "./allow-tmux";
 
 export const builtinPolicies = [
   denyGitAddAndCommit,
   redirectPlansToProject,
   denyWritesOutsideProject,
   denyGitDashC,
-  denyBashGrep,
   denyCdChained,
   denyGitChained,
   denyGhHeredoc,
+  denySshCompound,
   denyMixedPureChains,
   allowBunTest,
   allowGitAdd,
@@ -78,7 +84,9 @@ export const builtinPolicies = [
   allowWebFetchClaude,
   allowTaskCrud,
   allowGhReadOnly,
+  allowGhIssuePr,
   allowBashFindInProject,
+  allowBashGrepInProject,
   allowSuperpowersSkills,
   allowGitCheckIgnore,
   allowGitRevParse,
@@ -105,5 +113,9 @@ export const builtinPolicies = [
   allowToolSearch,
   allowCronCrud,
   allowRmProjectTmp,
+  allowNpmInstall,
+  allowNpxSafe,
   allowSleep,
+  allowNonDestructiveGit,
+  allowTmux,
 ];
