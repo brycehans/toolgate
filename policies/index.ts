@@ -5,6 +5,7 @@ import denyBashGrep from "./deny-bash-grep";
 import denyCdChained from "./deny-cd-chained";
 import denyGitChained from "./deny-git-chained";
 import denyGhHeredoc from "./deny-gh-heredoc";
+import denyMixedPureChains from "./deny-mixed-pure-chains";
 import redirectPlansToProject from "./redirect-plans-to-project";
 import allowBunTest from "./allow-bun-test";
 import allowGitAdd from "./allow-git-add";
@@ -60,6 +61,7 @@ export const builtinPolicies = [
   denyCdChained,
   denyGitChained,
   denyGhHeredoc,
+  denyMixedPureChains,
   allowBunTest,
   allowGitAdd,
   allowGitDiff,

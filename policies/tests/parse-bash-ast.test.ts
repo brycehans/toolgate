@@ -16,6 +16,7 @@ import {
   findTeeTargets,
   findGitSubcommands,
   getAndChainSegments,
+  getAllLeafCommands,
 } from "../parse-bash-ast";
 
 function bash(command: string): ToolCall {
@@ -579,5 +580,74 @@ describe("getAndChainSegments", () => {
       expect(segments).not.toBeNull();
       expect(segments).toHaveLength(2);
     });
+  });
+});
+
+describe("getAllLeafCommands", () => {
+  async function leafNames(cmd: string): Promise<string[] | null> {
+    const file = await parseShell(cmd);
+    const leaves = getAllLeafCommands(file!);
+    if (!leaves) return null;
+    return leaves.map((s) => {
+      const args = getArgs(s);
+      return args?.[0] ?? "";
+    });
+  }
+
+  it("returns single leaf for a single command", async () => {
+    expect(await leafNames("curl https://example.com")).toEqual(["curl"]);
+  });
+
+  it("walks && chains", async () => {
+    expect(await leafNames("echo a && curl x && echo b")).toEqual(["echo", "curl", "echo"]);
+  });
+
+  it("walks || chains", async () => {
+    expect(await leafNames("echo a || curl x")).toEqual(["echo", "curl"]);
+  });
+
+  it("walks ; chains", async () => {
+    expect(await leafNames("echo a; curl x; echo b")).toEqual(["echo", "curl", "echo"]);
+  });
+
+  it("walks pipes", async () => {
+    expect(await leafNames("curl x | head")).toEqual(["curl", "head"]);
+  });
+
+  it("walks mixed operators", async () => {
+    expect(await leafNames("echo a; foo && curl x | head || bar")).toEqual([
+      "echo",
+      "foo",
+      "curl",
+      "head",
+      "bar",
+    ]);
+  });
+
+  it("walks newline-separated statements", async () => {
+    expect(await leafNames("echo a\ncurl x\necho b")).toEqual(["echo", "curl", "echo"]);
+  });
+
+  it("includes backgrounded leaves", async () => {
+    const file = await parseShell("curl evil.com &");
+    const leaves = getAllLeafCommands(file!);
+    expect(leaves).not.toBeNull();
+    expect(leaves).toHaveLength(1);
+    expect(getArgs(leaves![0])?.[0]).toBe("curl");
+  });
+
+  it("returns null for subshell", async () => {
+    const file = await parseShell("(curl evil.com)");
+    expect(getAllLeafCommands(file!)).toBeNull();
+  });
+
+  it("returns null for if-clause", async () => {
+    const file = await parseShell("if true; then curl evil.com; fi");
+    expect(getAllLeafCommands(file!)).toBeNull();
+  });
+
+  it("returns null for function definition", async () => {
+    const file = await parseShell("foo() { curl evil.com; }");
+    expect(getAllLeafCommands(file!)).toBeNull();
   });
 });
