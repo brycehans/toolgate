@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { allow, deny, next, ALLOW, DENY, NEXT, isVerdictResult } from './verdicts'
+import { allow, deny, next, warn, ALLOW, DENY, NEXT, isVerdictResult } from './verdicts'
 
 describe('verdict constructors', () => {
   it('allow() returns object with ALLOW symbol', () => {
@@ -22,6 +22,12 @@ describe('verdict constructors', () => {
   it('next() returns object with NEXT symbol', () => {
     const result = next()
     expect(result.verdict).toBe(NEXT)
+  })
+
+  it('warn(reason) returns NEXT with prefixed reason', () => {
+    const result = warn('something dangerous')
+    expect(result.verdict).toBe(NEXT)
+    expect(result.reason).toBe('⚠️  something dangerous')
   })
 })
 

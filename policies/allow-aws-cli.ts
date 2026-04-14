@@ -1,4 +1,4 @@
-import { allow, deny, next, type Policy } from "../src";
+import { allow, deny, next, warn, type Policy } from "../src";
 import { safeBashCommandOrPipeline } from "./parse-bash-ast";
 
 export interface AwsCliPolicyConfig {
@@ -55,7 +55,6 @@ const DESTRUCTIVE_S3_COMMANDS = new Set(["rm", "rb"]);
 
 const DEFAULT_READ_ONLY_PROFILES = [/ReadOnly|Auditor/i];
 const DEFAULT_ADMIN_PROFILES = [/Admin|AdministratorAccess/i];
-const DEFAULT_RESTRICTED_ACCOUNT_IDS = ["206239660915"];
 
 function extractProfile(tokens: string[]): string | null {
   for (let i = 0; i < tokens.length; i++) {
@@ -125,7 +124,7 @@ const DENY_MSG =
 export function createAwsCliPolicy(config: AwsCliPolicyConfig = {}): Policy {
   const readOnlyPatterns = config.readOnlyProfiles ?? DEFAULT_READ_ONLY_PROFILES;
   const adminPatterns = config.adminProfiles ?? DEFAULT_ADMIN_PROFILES;
-  const restrictedIds = config.restrictedAccountIds ?? DEFAULT_RESTRICTED_ACCOUNT_IDS;
+  const restrictedIds = config.restrictedAccountIds ?? [];
   const extraDestructive = new Set(config.extraDestructiveSubcommands ?? []);
 
   return {
@@ -141,14 +140,16 @@ export function createAwsCliPolicy(config: AwsCliPolicyConfig = {}): Policy {
       // Destructive commands are always denied
       if (isDestructiveCommand(tokens, extraDestructive)) return deny(DENY_MSG);
 
-      // Restricted account ID mentioned — require approval
-      if (mentionsRestrictedAccount(tokens, restrictedIds)) return next();
+      // Restricted account ID mentioned — warn and require approval
+      if (mentionsRestrictedAccount(tokens, restrictedIds))
+        return warn("AWS command targets a restricted account — requires manual approval");
 
       // ReadOnly profile → auto-allow non-destructive commands
       if (profile && matchesAny(profile, readOnlyPatterns)) return allow();
 
-      // Admin profile → always require approval
-      if (profile && matchesAny(profile, adminPatterns)) return next();
+      // Admin profile → warn and require approval
+      if (profile && matchesAny(profile, adminPatterns))
+        return warn(`AWS command using admin profile "${profile}" — requires manual approval`);
 
       // No profile or unrecognised profile → fall through to prompt
       return next();

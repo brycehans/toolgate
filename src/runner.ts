@@ -59,6 +59,7 @@ export function buildHookResponse(verdict: VerdictResult): HookResponse {
     hookSpecificOutput: {
       hookEventName: 'PreToolUse',
       permissionDecision: 'ask',
+      ...('reason' in verdict && verdict.reason ? { permissionDecisionReason: verdict.reason } : {}),
     },
   }
 }

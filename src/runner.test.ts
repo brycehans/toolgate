@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { buildToolCall, buildHookResponse } from './runner'
-import { allow, deny, next } from './verdicts'
+import { allow, deny, next, warn } from './verdicts'
 
 describe('buildToolCall', () => {
   it('maps hook input to ToolCall', () => {
@@ -39,5 +39,12 @@ describe('buildHookResponse', () => {
   it('maps next (chain exhausted) to ask', () => {
     const response = buildHookResponse(next())
     expect(response.hookSpecificOutput.permissionDecision).toBe('ask')
+    expect(response.hookSpecificOutput.permissionDecisionReason).toBeUndefined()
+  })
+
+  it('maps warn to ask with reason', () => {
+    const response = buildHookResponse(warn('sensitive operation'))
+    expect(response.hookSpecificOutput.permissionDecision).toBe('ask')
+    expect(response.hookSpecificOutput.permissionDecisionReason).toBe('⚠️  sensitive operation')
   })
 })

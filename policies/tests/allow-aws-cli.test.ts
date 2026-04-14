@@ -66,7 +66,7 @@ describe("allow-aws-cli", () => {
     }
   });
 
-  describe("requires approval for Admin profiles (non-destructive)", () => {
+  describe("warns and requires approval for Admin profiles (non-destructive)", () => {
     const requireApproval = [
       "aws s3 ls --profile ko-Admin",
       "aws s3 cp file.txt s3://bucket/key --profile ko-Admin",
@@ -77,23 +77,11 @@ describe("allow-aws-cli", () => {
     ];
 
     for (const cmd of requireApproval) {
-      it(`requires approval: ${cmd}`, async () => {
+      it(`warns: ${cmd}`, async () => {
         const result = await allowAwsCli.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
-      });
-    }
-  });
-
-  describe("requires approval for restricted account ID", () => {
-    const requireApproval = [
-      "aws sts assume-role --role-arn arn:aws:iam::206239660915:role/MyRole --profile ko-ReadOnly",
-      "aws s3 ls s3://bucket --profile 206239660915-ReadOnly",
-    ];
-
-    for (const cmd of requireApproval) {
-      it(`requires approval: ${cmd}`, async () => {
-        const result = await allowAwsCli.handler(bash(cmd));
-        expect(result.verdict).toBe(NEXT);
+        expect("reason" in result && result.reason).toContain("⚠️");
+        expect("reason" in result && result.reason).toContain("admin profile");
       });
     }
   });
@@ -109,6 +97,8 @@ describe("allow-aws-cli", () => {
       it(`falls through: ${cmd}`, async () => {
         const result = await allowAwsCli.handler(bash(cmd));
         expect(result.verdict).toBe(NEXT);
+        // No warning reason for unknown profiles — just a plain next()
+        expect("reason" in result).toBe(false);
       });
     }
   });
@@ -144,6 +134,7 @@ describe("allow-aws-cli", () => {
     it("matches admin case-insensitively", async () => {
       const result = await allowAwsCli.handler(bash("aws s3 ls --profile ko-admin"));
       expect(result.verdict).toBe(NEXT);
+      expect("reason" in result && result.reason).toContain("⚠️");
     });
   });
 
@@ -188,32 +179,37 @@ describe("createAwsCliPolicy (custom config)", () => {
   });
 
   describe("uses custom admin profiles", () => {
-    it("requires approval for PowerUser", async () => {
+    it("warns for PowerUser", async () => {
       const result = await custom.handler(bash("aws s3 ls --profile ko-PowerUser"));
       expect(result.verdict).toBe(NEXT);
+      expect("reason" in result && result.reason).toContain("⚠️");
     });
 
-    it("requires approval for FullAccess", async () => {
+    it("warns for FullAccess", async () => {
       const result = await custom.handler(bash("aws s3 ls --profile staging-FullAccess"));
       expect(result.verdict).toBe(NEXT);
+      expect("reason" in result && result.reason).toContain("⚠️");
     });
 
     it("does NOT flag default Admin when overridden", async () => {
-      // Admin is no longer in the admin list, so it falls through as unknown profile
       const result = await custom.handler(bash("aws s3 ls --profile ko-Admin"));
-      expect(result.verdict).toBe(NEXT); // still NEXT (unknown profile), but not because of admin matching
+      expect(result.verdict).toBe(NEXT);
+      // No warning — falls through as unknown profile
+      expect("reason" in result).toBe(false);
     });
   });
 
-  describe("uses custom restricted account IDs", () => {
-    it("requires approval for custom account ID", async () => {
+  describe("warns for restricted account IDs", () => {
+    it("warns for custom account ID", async () => {
       const result = await custom.handler(
         bash("aws sts assume-role --role-arn arn:aws:iam::111111111111:role/Role --profile ko-SecurityAudit"),
       );
       expect(result.verdict).toBe(NEXT);
+      expect("reason" in result && result.reason).toContain("⚠️");
+      expect("reason" in result && result.reason).toContain("restricted account");
     });
 
-    it("does NOT restrict default account when overridden", async () => {
+    it("does not warn when no restricted account is mentioned", async () => {
       const result = await custom.handler(
         bash("aws s3 ls --profile ko-SecurityAudit"),
       );

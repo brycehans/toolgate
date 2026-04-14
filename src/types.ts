@@ -16,7 +16,7 @@ export interface CallContext {
 export type VerdictResult =
   | { verdict: typeof ALLOW }
   | { verdict: typeof DENY; reason?: string }
-  | { verdict: typeof NEXT };
+  | { verdict: typeof NEXT; reason?: string };
 
 export type Middleware = (call: ToolCall) => Promise<VerdictResult>;
 
