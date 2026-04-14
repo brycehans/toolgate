@@ -61,7 +61,16 @@ This registers a `PreToolUse` hook in `~/.claude/settings.json`. Toolgate ships 
 
 ## Configuration
 
-Optionally add project-specific policies in `toolgate.config.ts` (project root or `.claude/`). These run **before** built-in policies:
+Toolgate walks from the current directory up to `$HOME` and loads every config it finds along the way. At each level it checks two filenames, in this order:
+
+1. `toolgate.config.local.ts` — **personal, gitignored.** For policies specific to your machine or setup that you don't want to commit.
+2. `toolgate.config.ts` — **shared, committed.** For policies the whole team uses.
+
+Both may live at the directory root or inside `.claude/`. Personal configs are evaluated before shared ones, and inner directories are evaluated before outer ones, so the most specific/personal policy wins. Built-in policies always run last.
+
+`toolgate init --project` creates the shared config and adds `toolgate.config.local.ts` to your project's `.gitignore`.
+
+Example shared config:
 
 ```ts
 import { definePolicy, deny, next } from "toolgate";
@@ -80,7 +89,7 @@ export default definePolicy([
 ]);
 ```
 
-Project policies run first, then built-in. The first non-`next()` verdict wins.
+Project policies run first (personal before shared), then built-in. The first non-`next()` verdict wins.
 
 ## Writing Policies
 

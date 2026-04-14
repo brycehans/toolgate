@@ -18,14 +18,14 @@ describe('findConfigInDir', () => {
   it('finds toolgate.config.ts in dir', async () => {
     const configPath = join(tempDir, 'toolgate.config.ts')
     await writeFile(configPath, 'export default []')
-    expect(findConfigInDir(tempDir)).toBe(configPath)
+    expect(findConfigInDir(tempDir)).toEqual([configPath])
   })
 
   it('finds .claude/toolgate.config.ts in dir', async () => {
     await mkdir(join(tempDir, '.claude'), { recursive: true })
     const configPath = join(tempDir, '.claude', 'toolgate.config.ts')
     await writeFile(configPath, 'export default []')
-    expect(findConfigInDir(tempDir)).toBe(configPath)
+    expect(findConfigInDir(tempDir)).toEqual([configPath])
   })
 
   it('prefers root config over .claude/ config', async () => {
@@ -34,11 +34,41 @@ describe('findConfigInDir', () => {
     const claudeConfig = join(tempDir, '.claude', 'toolgate.config.ts')
     await writeFile(rootConfig, 'export default []')
     await writeFile(claudeConfig, 'export default []')
-    expect(findConfigInDir(tempDir)).toBe(rootConfig)
+    expect(findConfigInDir(tempDir)).toEqual([rootConfig])
   })
 
-  it('returns null when no config found', () => {
-    expect(findConfigInDir(tempDir)).toBeNull()
+  it('returns empty array when no config found', () => {
+    expect(findConfigInDir(tempDir)).toEqual([])
+  })
+
+  it('returns local config before shared config', async () => {
+    const sharedConfig = join(tempDir, 'toolgate.config.ts')
+    const localConfig = join(tempDir, 'toolgate.config.local.ts')
+    await writeFile(sharedConfig, 'export default []')
+    await writeFile(localConfig, 'export default []')
+    expect(findConfigInDir(tempDir)).toEqual([localConfig, sharedConfig])
+  })
+
+  it('finds local config alone when no shared config exists', async () => {
+    const localConfig = join(tempDir, 'toolgate.config.local.ts')
+    await writeFile(localConfig, 'export default []')
+    expect(findConfigInDir(tempDir)).toEqual([localConfig])
+  })
+
+  it('finds local config in .claude/ when no root local exists', async () => {
+    await mkdir(join(tempDir, '.claude'), { recursive: true })
+    const claudeLocal = join(tempDir, '.claude', 'toolgate.config.local.ts')
+    await writeFile(claudeLocal, 'export default []')
+    expect(findConfigInDir(tempDir)).toEqual([claudeLocal])
+  })
+
+  it('prefers root local over .claude/ local', async () => {
+    await mkdir(join(tempDir, '.claude'), { recursive: true })
+    const rootLocal = join(tempDir, 'toolgate.config.local.ts')
+    const claudeLocal = join(tempDir, '.claude', 'toolgate.config.local.ts')
+    await writeFile(rootLocal, 'export default []')
+    await writeFile(claudeLocal, 'export default []')
+    expect(findConfigInDir(tempDir)).toEqual([rootLocal])
   })
 })
 
@@ -84,6 +114,27 @@ describe('findAllConfigs', () => {
     await mkdir(child, { recursive: true })
 
     expect(findAllConfigs(child)).toEqual([parentConfig])
+  })
+
+  it('orders local before shared at each level when walking up', async () => {
+    const parentShared = join(tempDir, 'toolgate.config.ts')
+    const parentLocal = join(tempDir, 'toolgate.config.local.ts')
+    await writeFile(parentShared, 'export default []')
+    await writeFile(parentLocal, 'export default []')
+
+    const child = join(tempDir, 'child')
+    await mkdir(child)
+    const childShared = join(child, 'toolgate.config.ts')
+    const childLocal = join(child, 'toolgate.config.local.ts')
+    await writeFile(childShared, 'export default []')
+    await writeFile(childLocal, 'export default []')
+
+    expect(findAllConfigs(child)).toEqual([
+      childLocal,
+      childShared,
+      parentLocal,
+      parentShared,
+    ])
   })
 })
 

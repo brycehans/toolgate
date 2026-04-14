@@ -27,7 +27,7 @@ Use Bun exclusively — not Node.js, npm, yarn, or pnpm. Bun auto-loads `.env`.
 - **`types.ts`** — `ToolCall`, `CallContext`, `VerdictResult`, `Middleware`, `Policy` type definitions
 - **`verdicts.ts`** — Symbol-based verdict system: `ALLOW`, `DENY`, `NEXT` with helpers `allow()`, `deny(reason?)`, `next()`
 - **`policy.ts`** — `definePolicy()` and `runPolicy()` — sequential policy chain, returns first non-NEXT verdict
-- **`config.ts`** — Loads project config (`./toolgate.config.ts` or `./.claude/toolgate.config.ts`) then built-in policies, concatenates policy arrays
+- **`config.ts`** — Walks from cwd up to `$HOME` collecting configs. At each level, loads `toolgate.config.local.ts` (personal, gitignored) before `toolgate.config.ts` (committed, team-shared); prefers `./` over `./.claude/`. Built-in policies are appended last.
 - **`runner.ts`** — Bridges Claude Code hook stdin/stdout protocol to the policy engine
 - **`cli.ts`** — Subcommands: `run` (hook handler), `init` (setup), `test` (dry-run), `list` (show loaded policies)
 - **`list-cmd.ts`** — Lists all loaded policies with names and descriptions
