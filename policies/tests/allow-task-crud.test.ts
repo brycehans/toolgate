@@ -11,7 +11,7 @@ const makeCall = (tool: string, args: Record<string, unknown> = {}): ToolCall =>
 });
 
 describe("allow-task-crud", () => {
-  for (const tool of ["TaskCreate", "TaskUpdate", "TaskGet", "TaskList", "TaskStop"]) {
+  for (const tool of ["TaskCreate", "TaskUpdate", "TaskGet", "TaskList", "TaskOutput", "TaskStop"]) {
     it(`allows ${tool}`, async () => {
       const result = await allowTaskCrud.handler(makeCall(tool));
       expect(result.verdict).toBe(ALLOW);
