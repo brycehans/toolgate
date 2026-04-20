@@ -7,6 +7,7 @@ import denyGitChained from "./deny-git-chained";
 import denyGhHeredoc from "./deny-gh-heredoc";
 import denySshCompound from "./deny-ssh-compound";
 import denyMixedPureChains from "./deny-mixed-pure-chains";
+import redirectPythonJsonToFx from "./redirect-python-json-to-fx";
 import redirectPlansToProject from "./redirect-plans-to-project";
 import allowBunTest from "./allow-bun-test";
 import allowGitAdd from "./allow-git-add";
@@ -63,6 +64,7 @@ import allowBrew from "./allow-brew";
 export const builtinPolicies = [
   denyGitAddAndCommit,
   redirectPlansToProject,
+  redirectPythonJsonToFx,
   denyWritesOutsideProject,
   denyGitDashC,
   denyCdChained,
