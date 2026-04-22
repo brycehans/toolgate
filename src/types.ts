@@ -27,6 +27,6 @@ export type PolicyHandler = (call: ToolCall) => Promise<string | boolean | void>
 export interface Policy {
   name: string;
   description: string;
-  action: "deny" | "allow";
-  handler: PolicyHandler;
+  action?: "deny" | "allow";
+  handler: PolicyHandler | Middleware;
 }
