@@ -24,9 +24,10 @@ Use Bun exclusively — not Node.js, npm, yarn, or pnpm. Bun auto-loads `.env`.
 
 ### Core (`src/`)
 
-- **`types.ts`** — `ToolCall`, `CallContext`, `VerdictResult`, `Middleware`, `Policy` type definitions
-- **`verdicts.ts`** — Symbol-based verdict system: `ALLOW`, `DENY`, `NEXT` with helpers `allow()`, `deny(reason?)`, `next()`
-- **`policy.ts`** — `definePolicy()` and `runPolicy()` — sequential policy chain, returns first non-NEXT verdict
+- **`types.ts`** — `ToolCall`, `CallContext`, `VerdictResult`, `Policy`, `PolicyHandler` type definitions
+- **`verdicts.ts`** — Symbol-based verdict system: `ALLOW`, `DENY`, `NEXT` (internal — policy authors don't use these directly)
+- **`adapter.ts`** — `adaptHandler()` converts simplified policy handler returns (truthy/void) into internal `VerdictResult` objects
+- **`policy.ts`** — `definePolicy()` and `runPolicy()` — partitions policies by action (deny first, allow second), returns first activated verdict
 - **`config.ts`** — Walks from cwd up to `$HOME` collecting configs. At each level, loads `toolgate.config.local.ts` (personal, gitignored) before `toolgate.config.ts` (committed, team-shared); prefers `./` over `./.claude/`. Built-in policies are appended last.
 - **`runner.ts`** — Bridges Claude Code hook stdin/stdout protocol to the policy engine
 - **`cli.ts`** — Subcommands: `run` (hook handler), `init` (setup), `test` (dry-run), `list` (show loaded policies)
@@ -35,9 +36,14 @@ Use Bun exclusively — not Node.js, npm, yarn, or pnpm. Bun auto-loads `.env`.
 
 ### Built-in Policies (`policies/`)
 
-Each policy is a `Policy` object with `name`, `description`, and `handler`. The handler is a `Middleware` function that returns `next()` to pass through, `allow()` to permit, or `deny(reason)` to block.
+Each policy is a `Policy` object with `name`, `description`, `action`, and `handler`.
 
-Built-in policies are exported from `policies/index.ts` and automatically appended after any project-level policies. Project configs (`toolgate.config.ts`) can add extra policies via `definePolicy([...])`. Order matters — first non-NEXT verdict wins.
+- **`action: "deny"`** — handler returns a string (deny with reason), `true` (deny without reason), or `void` (pass through)
+- **`action: "allow"`** — handler returns `true` (allow) or `void` (pass through)
+
+The engine **always runs deny policies before allow policies**, regardless of array order. This prevents an overly broad allow from overriding a safety-critical deny. Within each action group, policies run in their original order.
+
+Built-in policies are exported from `policies/index.ts` and automatically appended after any project-level policies. Project configs (`toolgate.config.ts`) can add extra policies via `definePolicy([...])`. First activated verdict wins.
 
 ### Disabling Policies
 
@@ -59,24 +65,27 @@ When creating a new policy or renaming an existing one, you **must** update `pol
 
 ### Key Patterns
 
-- **Whitelist approach**: Policies explicitly allow known-safe patterns; everything else falls through as `next()` (prompts user)
+- **Whitelist approach**: Policies explicitly allow known-safe patterns; everything else falls through (prompts user)
 - **Shell command safety**: Use `shfmt --tojson` (via `policies/parse-bash-ast.ts`) to parse Bash commands into typed ASTs. Use `safeBashCommand()` for simple commands, `safeBashCommandOrPipeline()` for commands that may pipe to safe filters, or `getAndChainSegments()` to decompose `&&` chains into leaf statements. These reject unsafe patterns (substitution, chaining, background, unsafe redirects) at the AST level.
 - **Self-imports in tests**: Policy tests import from `"@brycehanscomb/toolgate"` (package self-reference) instead of relative `../../../src` paths
-- **Policy handlers are async**: All handlers return `Promise<VerdictResult>`
-- **Testing policy handlers directly**: Policy tests call `policyObj.handler(call)` to test the handler function
+- **Policy handlers are async**: All handlers return `Promise<string | boolean | void>`
+- **Testing policy handlers**: Tests wrap handlers with `adaptHandler()` to get `VerdictResult` objects for assertions: `const run = adaptHandler(policy.action!, policy.handler as any)`
 
 ## Writing a Policy
 
 ```ts
-import { allow, next, type Policy } from "../src";
+import type { Policy } from "../src";
 
 const myPolicy: Policy = {
   name: "My policy",
   description: "Describes what this policy does",
+  action: "allow",  // or "deny"
   handler: async (call) => {
-    if (call.tool !== "Bash") return next();
+    if (call.tool !== "Bash") return;
     // ... validation logic ...
-    return allow();
+    return true;  // allow (for "allow" action) or deny (for "deny" action)
+    // return "reason string" — only for "deny" action, denies with a message
+    // return / return undefined — pass through to next policy
   },
 };
 export default myPolicy;
@@ -94,15 +103,15 @@ For Bash policies that parse commands, use the AST helpers in `policies/parse-ba
 
 **Project policies** (`toolgate.config.ts`) are repo-specific. Examples: Laravel artisan commands, project-specific WebFetch domains, custom build scripts.
 
-### Ordering Convention
+### Evaluation Order
 
-The `builtinPolicies` array in `policies/index.ts` follows this order:
+The engine enforces **deny-before-allow** evaluation order automatically via the `action` field. Array position in `policies/index.ts` only affects relative order within the same action group.
 
-1. **Deny policies** — catch dangerous patterns first (`deny-git-add-and-commit`, `deny-writes-outside-project`, `deny-git-dash-c`)
-2. **Redirect policies** — modify tool calls before evaluation (`redirect-plans-to-project`)
-3. **Allow policies** — whitelist safe patterns (all `allow-*` policies)
+- All `action: "deny"` policies run first — any truthy return short-circuits with a deny
+- All `action: "allow"` policies run second — first truthy return allows
+- If no policy activates, the user is prompted (ask)
 
-New policies must be inserted at the correct position. First non-`next()` verdict wins, so a misplaced allow could override a deny.
+This means a misplaced allow policy **cannot** override a deny policy, regardless of array order.
 
 ### When to Create a Built-in vs Leave as Static Rule
 
