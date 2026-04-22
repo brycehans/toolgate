@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { DENY, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, DENY, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import denyMixedPureChains from "../deny-mixed-pure-chains";
+
+const run = adaptHandler(denyMixedPureChains.action!, denyMixedPureChains.handler as any);
 
 function bash(command: string): ToolCall {
   return {
@@ -26,7 +28,7 @@ describe("deny-mixed-pure-chains", () => {
 
     for (const cmd of denied) {
       it(`denies: ${JSON.stringify(cmd)}`, async () => {
-        const result = await denyMixedPureChains.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(DENY);
       });
     }
@@ -42,7 +44,7 @@ describe("deny-mixed-pure-chains", () => {
 
     for (const cmd of allowed) {
       it(`passes through: ${JSON.stringify(cmd)}`, async () => {
-        const result = await denyMixedPureChains.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -57,7 +59,7 @@ describe("deny-mixed-pure-chains", () => {
 
     for (const cmd of allowed) {
       it(`passes through: ${JSON.stringify(cmd)}`, async () => {
-        const result = await denyMixedPureChains.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -73,7 +75,7 @@ describe("deny-mixed-pure-chains", () => {
 
     for (const cmd of allowed) {
       it(`passes through: ${cmd}`, async () => {
-        const result = await denyMixedPureChains.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -85,7 +87,7 @@ describe("deny-mixed-pure-chains", () => {
       args: {},
       context: { cwd: "/tmp", env: {}, projectRoot: null },
     };
-    const result = await denyMixedPureChains.handler(call);
+    const result = await run(call);
     expect(result.verdict).toBe(NEXT);
   });
 });

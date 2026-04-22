@@ -1,4 +1,4 @@
-import { deny, next, type Policy } from "../src";
+import type { Policy } from "../src";
 import {
   parseShell,
   getAllLeafCommands,
@@ -10,16 +10,17 @@ const denyMixedPureChains: Policy = {
   name: "Deny mixed pure chains",
   description:
     "Blocks compound commands mixing pure (sleep, echo) and non-pure commands, forcing separate steps",
+  action: "deny",
   handler: async (call) => {
-    if (call.tool !== "Bash") return next();
+    if (call.tool !== "Bash") return;
     const command = call.args?.command;
-    if (typeof command !== "string") return next();
+    if (typeof command !== "string") return;
 
     const ast = await parseShell(command);
-    if (!ast) return next();
+    if (!ast) return;
 
     const leaves = getAllLeafCommands(ast);
-    if (!leaves || leaves.length < 2) return next();
+    if (!leaves || leaves.length < 2) return;
 
     let hasPure = false;
     let hasNonPure = false;
@@ -32,13 +33,9 @@ const denyMixedPureChains: Policy = {
         hasNonPure = true;
       }
       if (hasPure && hasNonPure) {
-        return deny(
-          "Split pure commands (sleep, echo, etc.) from other commands so each can be evaluated independently",
-        );
+        return "Split pure commands (sleep, echo, etc.) from other commands so each can be evaluated independently";
       }
     }
-
-    return next();
   },
 };
 export default denyMixedPureChains;

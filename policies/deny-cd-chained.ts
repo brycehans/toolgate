@@ -1,4 +1,4 @@
-import { deny, next, type Policy } from "../src";
+import type { Policy } from "../src";
 import { parseShell, getArgs, Op } from "./parse-bash-ast";
 import type { BinaryCmd, Stmt } from "./parse-bash-ast";
 
@@ -23,19 +23,18 @@ const denyCdChained: Policy = {
   name: "Deny cd chained with other commands",
   description:
     "Rejects cd && ... or cd; ... chains — run cd separately, the working directory persists between calls",
+  action: "deny",
   handler: async (call) => {
-    if (call.tool !== "Bash") return next();
+    if (call.tool !== "Bash") return;
     const cmd = call.args.command;
-    if (typeof cmd !== "string") return next();
+    if (typeof cmd !== "string") return;
 
     const ast = await parseShell(cmd);
-    if (!ast) return next();
+    if (!ast) return;
 
     // Multiple statements (cd ...; other ...) — check if first is cd
     if (ast.Stmts.length > 1 && firstCommandIs(ast.Stmts[0], "cd")) {
-      return deny(
-        "Don't chain commands after `cd`. Run `cd <path>` as its own Bash call — the working directory persists between calls.",
-      );
+      return "Don't chain commands after `cd`. Run `cd <path>` as its own Bash call — the working directory persists between calls.";
     }
 
     // Single statement that's a BinaryCmd (cd ... && other ...)
@@ -45,13 +44,9 @@ const denyCdChained: Policy = {
         (bin.Op === Op.And || bin.Op === Op.Or) &&
         firstCommandIs(bin.X, "cd")
       ) {
-        return deny(
-          "Don't chain commands after `cd`. Run `cd <path>` as its own Bash call — the working directory persists between calls.",
-        );
+        return "Don't chain commands after `cd`. Run `cd <path>` as its own Bash call — the working directory persists between calls.";
       }
     }
-
-    return next();
   },
 };
 export default denyCdChained;

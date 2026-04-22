@@ -1,4 +1,4 @@
-import { deny, next, type Policy } from "../src";
+import type { Policy } from "../src";
 import { parseShell, Op } from "./parse-bash-ast";
 
 /**
@@ -10,35 +10,30 @@ const denySshCompound: Policy = {
   name: "Deny ssh in compound commands",
   description:
     "Rejects compound Bash commands (&&, ||, ;) that contain ssh — run ssh separately for explicit approval",
+  action: "deny",
   handler: async (call) => {
-    if (call.tool !== "Bash") return next();
+    if (call.tool !== "Bash") return;
     const cmd = call.args.command;
-    if (typeof cmd !== "string") return next();
-    if (!cmd.includes("ssh")) return next();
+    if (typeof cmd !== "string") return;
+    if (!cmd.includes("ssh")) return;
 
     const ast = await parseShell(cmd);
-    if (!ast) return next();
+    if (!ast) return;
 
     // Multiple statements means ; chaining
     if (ast.Stmts.length > 1) {
       const hasSsh = ast.Stmts.some((stmt) => containsSsh(stmt.Cmd));
       if (hasSsh) {
-        return deny(
-          "Don't chain commands with ssh. Run ssh as its own Bash call for explicit approval.",
-        );
+        return "Don't chain commands with ssh. Run ssh as its own Bash call for explicit approval.";
       }
     }
 
     // Single statement with BinaryCmd (&&, ||)
     if (ast.Stmts.length === 1 && ast.Stmts[0].Cmd?.Type === "BinaryCmd") {
       if (containsSshBinary(ast.Stmts[0].Cmd)) {
-        return deny(
-          "Don't chain commands with ssh. Run ssh as its own Bash call for explicit approval.",
-        );
+        return "Don't chain commands with ssh. Run ssh as its own Bash call for explicit approval.";
       }
     }
-
-    return next();
   },
 };
 

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { DENY, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, DENY, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import denyBashGrep from "../deny-bash-grep";
+
+const run = adaptHandler(denyBashGrep.action!, denyBashGrep.handler as any);
 
 const PROJECT = "/home/user/project";
 
@@ -27,7 +29,7 @@ describe("deny-bash-grep", () => {
 
     for (const cmd of denied) {
       it(`denies: ${cmd}`, async () => {
-        const result = await denyBashGrep.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(DENY);
       });
     }
@@ -43,7 +45,7 @@ describe("deny-bash-grep", () => {
 
     for (const cmd of ignored) {
       it(`passes through: ${cmd}`, async () => {
-        const result = await denyBashGrep.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -55,7 +57,7 @@ describe("deny-bash-grep", () => {
       args: { pattern: "foo" },
       context: { cwd: PROJECT, env: {}, projectRoot: PROJECT },
     };
-    const result = await denyBashGrep.handler(call);
+    const result = await run(call);
     expect(result.verdict).toBe(NEXT);
   });
 });

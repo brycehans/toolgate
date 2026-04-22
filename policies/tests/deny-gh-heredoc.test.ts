@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { DENY, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, DENY, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import denyGhHeredoc from "../deny-gh-heredoc";
+
+const run = adaptHandler(denyGhHeredoc.action!, denyGhHeredoc.handler as any);
 
 const PROJECT = "/home/user/project";
 
@@ -24,9 +26,9 @@ describe("deny-gh-heredoc", () => {
 
     for (const cmd of denied) {
       it(`denies: ${cmd.slice(0, 60)}...`, async () => {
-        const result = await denyGhHeredoc.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(DENY);
-        expect(result.reason).toContain("--body-file");
+        expect((result as any).reason).toContain("--body-file");
       });
     }
   });
@@ -40,9 +42,9 @@ describe("deny-gh-heredoc", () => {
 
     for (const cmd of denied) {
       it(`denies: ${cmd.slice(0, 60)}...`, async () => {
-        const result = await denyGhHeredoc.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(DENY);
-        expect(result.reason).toContain("git commit -F");
+        expect((result as any).reason).toContain("git commit -F");
       });
     }
   });
@@ -56,9 +58,9 @@ describe("deny-gh-heredoc", () => {
 
     for (const cmd of denied) {
       it(`denies: ${cmd.slice(0, 60)}...`, async () => {
-        const result = await denyGhHeredoc.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(DENY);
-        expect(result.reason).toContain("--body-file");
+        expect((result as any).reason).toContain("--body-file");
       });
     }
   });
@@ -70,9 +72,9 @@ describe("deny-gh-heredoc", () => {
 
     for (const cmd of denied) {
       it(`denies: ${cmd.slice(0, 60)}...`, async () => {
-        const result = await denyGhHeredoc.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(DENY);
-        expect(result.reason).toContain("git commit -F");
+        expect((result as any).reason).toContain("git commit -F");
       });
     }
   });
@@ -90,7 +92,7 @@ describe("deny-gh-heredoc", () => {
 
     for (const cmd of allowed) {
       it(`passes through: ${cmd}`, async () => {
-        const result = await denyGhHeredoc.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -107,7 +109,7 @@ describe("deny-gh-heredoc", () => {
 
     for (const cmd of allowed) {
       it(`passes through: ${cmd}`, async () => {
-        const result = await denyGhHeredoc.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -119,14 +121,12 @@ describe("deny-gh-heredoc", () => {
       args: { file_path: "/tmp/foo" },
       context: { cwd: PROJECT, env: {}, projectRoot: PROJECT },
     };
-    const result = await denyGhHeredoc.handler(call);
+    const result = await run(call);
     expect(result.verdict).toBe(NEXT);
   });
 
   it("ignores non-gh/git bash commands with substitution", async () => {
-    const result = await denyGhHeredoc.handler(
-      bash('echo "$(whoami)"'),
-    );
+    const result = await run(bash('echo "$(whoami)"'));
     expect(result.verdict).toBe(NEXT);
   });
 });

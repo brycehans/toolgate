@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { DENY, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, DENY, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import denyGitChained from "../deny-git-chained";
+
+const run = adaptHandler(denyGitChained.action!, denyGitChained.handler as any);
 
 const PROJECT = "/home/user/project";
 
@@ -24,7 +26,7 @@ describe("deny-git-chained", () => {
 
     for (const cmd of denied) {
       it(`denies: ${cmd}`, async () => {
-        const result = await denyGitChained.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(DENY);
       });
     }
@@ -38,7 +40,7 @@ describe("deny-git-chained", () => {
 
     for (const cmd of denied) {
       it(`denies: ${cmd}`, async () => {
-        const result = await denyGitChained.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(DENY);
       });
     }
@@ -46,9 +48,7 @@ describe("deny-git-chained", () => {
 
   describe("denies git chained with ||", () => {
     it("denies: git pull || git fetch", async () => {
-      const result = await denyGitChained.handler(
-        bash("git pull || git fetch"),
-      );
+      const result = await run(bash("git pull || git fetch"));
       expect(result.verdict).toBe(DENY);
     });
   });
@@ -65,7 +65,7 @@ describe("deny-git-chained", () => {
 
     for (const cmd of allowed) {
       it(`passes through: ${cmd}`, async () => {
-        const result = await denyGitChained.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -80,7 +80,7 @@ describe("deny-git-chained", () => {
 
     for (const cmd of allowed) {
       it(`passes through: ${cmd}`, async () => {
-        const result = await denyGitChained.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -95,7 +95,7 @@ describe("deny-git-chained", () => {
 
     for (const cmd of allowed) {
       it(`passes through: ${cmd}`, async () => {
-        const result = await denyGitChained.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -107,7 +107,7 @@ describe("deny-git-chained", () => {
       args: { file_path: "/foo" },
       context: { cwd: PROJECT, env: {}, projectRoot: PROJECT },
     };
-    const result = await denyGitChained.handler(call);
+    const result = await run(call);
     expect(result.verdict).toBe(NEXT);
   });
 });
