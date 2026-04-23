@@ -426,6 +426,8 @@ const UNCONDITIONALLY_SAFE = new Set([
   "du",
   "diff",
   "jq",
+  "fx",
+  "gron",
 ]);
 
 export function isSafeFilter(tokens: string[]): boolean {
