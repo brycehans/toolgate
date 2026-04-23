@@ -29,8 +29,9 @@ Use Bun exclusively — not Node.js, npm, yarn, or pnpm. Bun auto-loads `.env`.
 - **`policy.ts`** — `definePolicy()` and `runPolicy()` — sequential policy chain, returns first non-NEXT verdict
 - **`config.ts`** — Walks from cwd up to `$HOME` collecting configs. At each level, loads `toolgate.config.local.ts` (personal, gitignored) before `toolgate.config.ts` (committed, team-shared); prefers `./` over `./.claude/`. Built-in policies are appended last.
 - **`runner.ts`** — Bridges Claude Code hook stdin/stdout protocol to the policy engine
-- **`cli.ts`** — Subcommands: `run` (hook handler), `init` (setup), `test` (dry-run), `list` (show loaded policies)
+- **`cli.ts`** — Subcommands: `run` (hook handler), `init` (setup), `test` (dry-run), `list` (show loaded policies), `logs` (show log file paths)
 - **`list-cmd.ts`** — Lists all loaded policies with names and descriptions
+- **`logs-cmd.ts`** — Prints Claude Code log file locations (`permission-requests.jsonl`, `tool-failures.jsonl`)
 - **`testing.ts`** — `testPolicy()` assertion helper for policy test cases
 
 ### Built-in Policies (`policies/`)
@@ -145,3 +146,13 @@ toolgate disable --json    # dump all policies + disable state as JSON
 ```
 
 The `--json` output includes each policy's name, description, source, disabled status, and which config disables it — useful for LLM-assisted debugging of policy behavior.
+
+## Log File Locations
+
+Use `toolgate logs` to print the paths to Claude Code's log files:
+
+```bash
+toolgate logs
+```
+
+This outputs the paths to `~/.claude/permission-requests.jsonl` (tool calls that required user approval) and `~/.claude/tool-failures.jsonl` (tool calls that failed after execution).

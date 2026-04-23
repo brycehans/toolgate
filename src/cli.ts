@@ -7,6 +7,7 @@ import { listPolicies } from './list-cmd'
 import { auditPermissions } from './audit-cmd'
 import { disableCmd } from './disable-cmd'
 import { suspend } from './suspend'
+import { logsCmd } from './logs-cmd'
 
 const [command, ...args] = process.argv.slice(2)
 
@@ -52,8 +53,12 @@ switch (command) {
     await suspend()
     break
 
+  case 'logs':
+    logsCmd()
+    break
+
   default:
-    console.error('Usage: toolgate <run|init|test|list|audit|disable|suspend>')
+    console.error('Usage: toolgate <run|init|test|list|audit|disable|suspend|logs>')
     console.error('  run              Run policy chain (called by hooks)')
     console.error('  init             Register PreToolUse hook')
     console.error('  init --project   Set up project config')
@@ -67,5 +72,6 @@ switch (command) {
     console.error('    --file=<path>  Target a specific config file (create if missing)')
     console.error('    --json         Dump all policies + disable state as JSON')
     console.error('  suspend          Suspend all policies (Ctrl+C to resume)')
+    console.error('  logs             Show Claude Code log file locations')
     process.exit(1)
 }
