@@ -1,15 +1,25 @@
 import { allow, next, type Policy } from "../src";
 import { safeBashCommand, safeBashCommandOrPipeline, getAndChainSegments, getArgs, parseShell } from "./parse-bash-ast";
 
-/** Whitelisted npx packages — add entries as needed. */
-const SAFE_NPX_PACKAGES = new Set([
-  "next",
-  "playwright",
-  "vitest",
-]);
+/**
+ * Whitelisted npx packages.
+ * - `true` means all subcommands are safe
+ * - A `Set<string>` lists destructive subcommands that should NOT be auto-allowed
+ */
+const SAFE_NPX_PACKAGES: Record<string, true | Set<string>> = {
+  next: true,
+  playwright: true,
+  vitest: true,
+  cdk: new Set(["deploy", "destroy"]),
+};
 
 function isAllowedNpx(tokens: string[]): boolean {
-  return tokens[0] === "npx" && SAFE_NPX_PACKAGES.has(tokens[1]);
+  if (tokens[0] !== "npx") return false;
+  const rule = SAFE_NPX_PACKAGES[tokens[1]];
+  if (!rule) return false;
+  if (rule === true) return true;
+  // Block if any argument matches a destructive subcommand
+  return !tokens.slice(2).some(t => rule.has(t));
 }
 
 const allowNpxSafe: Policy = {
