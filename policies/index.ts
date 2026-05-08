@@ -63,6 +63,7 @@ import allowAwsCli from "./allow-aws-cli";
 import allowBrew from "./allow-brew";
 import allowMcpAtlassian from "./allow-mcp-atlassian";
 import allowGo from "./allow-go";
+import allowLsof from "./allow-lsof";
 
 export const builtinPolicies = [
   denyGitAddAndCommit,
@@ -130,4 +131,5 @@ export const builtinPolicies = [
   allowBrew,
   allowMcpAtlassian,
   allowGo,
+  allowLsof,
 ];
