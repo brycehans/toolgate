@@ -4,11 +4,11 @@ import allowAwsCli, { createAwsCliPolicy } from "../allow-aws-cli";
 
 const PROJECT = "/home/user/project";
 
-function bash(command: string): ToolCall {
+function bash(command: string, env: Record<string, string> = {}): ToolCall {
   return {
     tool: "Bash",
     args: { command },
-    context: { cwd: PROJECT, env: {}, projectRoot: PROJECT },
+    context: { cwd: PROJECT, env, projectRoot: PROJECT },
   };
 }
 
@@ -117,6 +117,50 @@ describe("allow-aws-cli", () => {
 
     it("ignores compound commands", async () => {
       const result = await allowAwsCli.handler(bash("aws s3 ls && aws s3 rm s3://bucket/key"));
+      expect(result.verdict).toBe(NEXT);
+    });
+  });
+
+  describe("falls back to AWS_PROFILE env when no --profile flag", () => {
+    it("allows non-destructive command with ReadOnly profile from env", async () => {
+      const result = await allowAwsCli.handler(
+        bash("aws s3 ls", { AWS_PROFILE: "ko-ReadOnly" }),
+      );
+      expect(result.verdict).toBe(ALLOW);
+    });
+
+    it("allows piped non-destructive command with ReadOnly env", async () => {
+      const result = await allowAwsCli.handler(
+        bash("aws ec2 describe-instances | head -20", { AWS_PROFILE: "ko-Auditor" }),
+      );
+      expect(result.verdict).toBe(ALLOW);
+    });
+
+    it("requires approval for Admin profile from env", async () => {
+      const result = await allowAwsCli.handler(
+        bash("aws s3 ls", { AWS_PROFILE: "ko-Admin" }),
+      );
+      expect(result.verdict).toBe(NEXT);
+    });
+
+    it("requires approval for destructive command regardless of ReadOnly env", async () => {
+      const result = await allowAwsCli.handler(
+        bash("aws s3 rm s3://bucket/key", { AWS_PROFILE: "ko-ReadOnly" }),
+      );
+      expect(result.verdict).toBe(NEXT);
+    });
+
+    it("--profile flag wins over AWS_PROFILE env", async () => {
+      const result = await allowAwsCli.handler(
+        bash("aws s3 ls --profile ko-Admin", { AWS_PROFILE: "ko-ReadOnly" }),
+      );
+      expect(result.verdict).toBe(NEXT);
+    });
+
+    it("falls through when env profile is unknown", async () => {
+      const result = await allowAwsCli.handler(
+        bash("aws s3 ls", { AWS_PROFILE: "ko-Developer" }),
+      );
       expect(result.verdict).toBe(NEXT);
     });
   });

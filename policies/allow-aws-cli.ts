@@ -128,12 +128,13 @@ export function createAwsCliPolicy(config: AwsCliPolicyConfig = {}): Policy {
   return {
     name: "Allow AWS CLI",
     description:
-      "Auto-allows non-destructive AWS CLI commands with ReadOnly profiles; requires approval for Admin profiles; denies destructive commands",
+      "Auto-allows non-destructive AWS CLI commands with ReadOnly profiles (via --profile or AWS_PROFILE env); requires approval for Admin profiles; denies destructive commands",
     handler: async (call) => {
       const tokens = await safeBashCommandOrPipeline(call);
       if (!tokens || tokens[0] !== "aws") return next();
 
-      const profile = extractProfile(tokens);
+      // --profile flag wins, then AWS_PROFILE env, matching AWS CLI's own precedence
+      const profile = extractProfile(tokens) ?? call.context.env.AWS_PROFILE ?? null;
 
       // Destructive commands — always require approval
       if (isDestructiveCommand(tokens, extraDestructive)) return next();
