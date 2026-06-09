@@ -1,4 +1,4 @@
-import type { ALLOW, DENY, NEXT } from "./verdicts";
+import type { ALLOW, ASK, DENY, NEXT } from "./verdicts";
 
 export interface ToolCall {
   tool: string;
@@ -16,6 +16,7 @@ export interface CallContext {
 export type VerdictResult =
   | { verdict: typeof ALLOW }
   | { verdict: typeof DENY; reason?: string }
+  | { verdict: typeof ASK; reason?: string }
   | { verdict: typeof NEXT };
 
 export type Middleware = (call: ToolCall) => Promise<VerdictResult>;

@@ -65,6 +65,11 @@ import allowMcpAtlassian from "./allow-mcp-atlassian";
 import allowGo from "./allow-go";
 import allowLsof from "./allow-lsof";
 import allowCdk from "./allow-cdk";
+import allowDockerReadOnly from "./allow-docker-read-only";
+import allowDockerComposeExecTests from "./allow-docker-compose-exec-tests";
+import allowSubshellCdTest from "./allow-subshell-cd-test";
+import allowDockerComposeExecMysqlReadOnly from "./allow-docker-compose-exec-mysql-readonly";
+import allowToolgateCliReadOnly from "./allow-toolgate-cli-readonly";
 
 export const builtinPolicies = [
   denyGitAddAndCommit,
@@ -134,4 +139,9 @@ export const builtinPolicies = [
   allowGo,
   allowLsof,
   allowCdk,
+  allowDockerReadOnly,
+  allowDockerComposeExecTests,
+  allowSubshellCdTest,
+  allowDockerComposeExecMysqlReadOnly,
+  allowToolgateCliReadOnly,
 ];

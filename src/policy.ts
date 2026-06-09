@@ -28,7 +28,7 @@ export async function runPolicyWithTrace(policies: Policy[], call: ToolCall): Pr
     if (!isVerdictResult(result)) {
       throw new Error(
         `toolgate: policy[${i}] "${policy.name}" returned invalid verdict: ${JSON.stringify(result)}\n` +
-        `  Every policy handler must return allow(), deny(), or next().`
+        `  Every policy handler must return allow(), deny(), ask(), or next().`
       )
     }
 
