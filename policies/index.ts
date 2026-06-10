@@ -54,12 +54,22 @@ import allowCronCrud from "./allow-cron-crud";
 import allowRmProjectTmp from "./allow-rm-project-tmp";
 import allowNpmInstall from "./allow-npm-install";
 import allowNpxSafe from "./allow-npx-safe";
+import allowPnpmPackageScript from "./allow-pnpm-package-script";
 import allowSleep from "./allow-sleep";
 import allowNonDestructiveGit from "./allow-non-destructive-git";
 import allowGhIssuePr from "./allow-gh-issue-pr";
 import allowTmux from "./allow-tmux";
 import allowAwsCli from "./allow-aws-cli";
 import allowBrew from "./allow-brew";
+import allowMcpAtlassian from "./allow-mcp-atlassian";
+import allowGo from "./allow-go";
+import allowLsof from "./allow-lsof";
+import allowCdk from "./allow-cdk";
+import allowDockerReadOnly from "./allow-docker-read-only";
+import allowDockerComposeExecTests from "./allow-docker-compose-exec-tests";
+import allowSubshellCdTest from "./allow-subshell-cd-test";
+import allowDockerComposeExecMysqlReadOnly from "./allow-docker-compose-exec-mysql-readonly";
+import allowToolgateCliReadOnly from "./allow-toolgate-cli-readonly";
 
 export const builtinPolicies = [
   denyGitAddAndCommit,
@@ -119,9 +129,19 @@ export const builtinPolicies = [
   allowRmProjectTmp,
   allowNpmInstall,
   allowNpxSafe,
+  allowPnpmPackageScript,
   allowSleep,
   allowNonDestructiveGit,
   allowTmux,
   allowAwsCli,
   allowBrew,
+  allowMcpAtlassian,
+  allowGo,
+  allowLsof,
+  allowCdk,
+  allowDockerReadOnly,
+  allowDockerComposeExecTests,
+  allowSubshellCdTest,
+  allowDockerComposeExecMysqlReadOnly,
+  allowToolgateCliReadOnly,
 ];

@@ -35,6 +35,24 @@ describe("allow-rm-project-tmp", () => {
     expect(result.verdict).toBe(ALLOW);
   });
 
+  describe("worktree (cwd inside project, separate tmp/)", () => {
+    const WORKTREE = `${PROJECT}/.claude/worktrees/my-branch`;
+
+    it("allows rm of cwd-local tmp/ files when cwd is inside project", async () => {
+      const result = await allowRmProjectTmp.handler(
+        bash("rm tmp/a.md tmp/b.md", WORKTREE),
+      );
+      expect(result.verdict).toBe(ALLOW);
+    });
+
+    it("does not allow rm of cwd-local tmp/ when cwd is outside project", async () => {
+      const result = await allowRmProjectTmp.handler(
+        bash("rm tmp/a.md", "/some/other/place"),
+      );
+      expect(result.verdict).toBe(NEXT);
+    });
+  });
+
   describe("requires approval for -r or -f flags in tmp/", () => {
     const flagged = [
       "rm -f tmp/pr-body.md",

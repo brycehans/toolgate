@@ -682,13 +682,23 @@ export function findWriteCommandTargets(file: ShellFile): string[] {
  * required first arguments (subcommand/flag constraints).
  */
 export const PURE_COMMANDS: Map<string, Set<string> | null> = new Map([
+  ["clear", null], // clears terminal screen
+  ["date", null], // prints date/time
+  ["env", null], // prints environment (redirects rejected by AST layer)
+  ["hostname", null], // prints hostname
+  ["id", null], // prints user/group info
   ["php", new Set(["-l"])], // lint mode only — parses, never executes
+  ["printenv", null], // prints environment variables
   ["echo", null], // stdout only (redirects rejected by AST layer)
   ["test", null], // evaluates conditions, no side effects
   ["true", null], // always succeeds, no side effects
   ["false", null], // always fails, no side effects
   ["pwd", null], // prints cwd, no side effects
   ["sleep", null], // waits, no side effects
+  ["uname", null], // prints system info
+  ["uptime", null], // prints system uptime
+  ["which", null], // prints command path
+  ["whoami", null], // prints current user
 ]);
 
 export function isPureCommand(tokens: string[]): boolean {

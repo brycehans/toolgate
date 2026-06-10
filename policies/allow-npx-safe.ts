@@ -5,6 +5,8 @@ import { safeBashCommand, safeBashCommandOrPipeline, getAndChainSegments, getArg
 const SAFE_NPX_PACKAGES = new Set([
   "next",
   "playwright",
+  "tsc",
+  "typescript",
   "vitest",
 ]);
 
