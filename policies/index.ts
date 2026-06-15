@@ -49,6 +49,7 @@ import allowMcpContext7 from "./allow-mcp-context7";
 import allowMcpIdeDiagnostics from "./allow-mcp-ide-diagnostics";
 import allowMcpPlaywright from "./allow-mcp-playwright";
 import allowPlanMode from "./allow-plan-mode";
+import allowMagickInProject from "./allow-magick-in-project";
 import allowMkdirInProject from "./allow-mkdir-in-project";
 import allowAskUser from "./allow-ask-user";
 import allowToolSearch from "./allow-tool-search";
@@ -120,6 +121,7 @@ export const builtinPolicies = [
   allowMcpContext7,
   allowMcpIdeDiagnostics,
   allowMcpPlaywright,
+  allowMagickInProject,
   allowMkdirInProject,
   allowPlanMode,
   allowAskUser,
