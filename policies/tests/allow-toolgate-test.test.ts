@@ -19,7 +19,7 @@ describe("allow-toolgate-test", () => {
     const allowed = [
       `toolgate test Bash '{"command": "rm -rf /etc/passwd"}'`,
       `toolgate test Bash '{"command": "ls"}'`,
-      `toolgate test Bash '{"command": "rm -rf ./tmp/foo"}' --cwd /Users/bryce/Dev/pixelwatch`,
+      `toolgate test Bash '{"command": "rm -rf ./tmp/foo"}' --cwd /home/user/project`,
       `toolgate test Read '{"file_path": "/etc/shadow"}'`,
       `toolgate test --json Bash '{"command": "git push"}'`,
     ];

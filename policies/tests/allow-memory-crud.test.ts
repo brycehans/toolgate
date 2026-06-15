@@ -7,7 +7,7 @@ const run = adaptHandler(allowMemoryCrud.action!, allowMemoryCrud.handler as any
 
 const HOME = homedir();
 const PROJECT = "/home/user/project";
-const MEMORY = `${HOME}/.claude/projects/-Users-bryce-Dev-toolgate/memory`;
+const MEMORY = `${HOME}/.claude/projects/-home-user-project/memory`;
 
 function read(filePath: string): ToolCall {
   return {
@@ -45,7 +45,7 @@ describe("allow-memory-crud", () => {
   describe("file-tool CRUD on memory files", () => {
     const cases = [
       ["Read", () => read(`${MEMORY}/MEMORY.md`)],
-      ["Read tilde", () => read(`~/.claude/projects/-Users-bryce-Dev-toolgate/memory/MEMORY.md`)],
+      ["Read tilde", () => read(`~/.claude/projects/-home-user-project/memory/MEMORY.md`)],
       ["Write", () => write(`${MEMORY}/new-memory.md`)],
       ["Edit", () => edit(`${MEMORY}/MEMORY.md`)],
     ] as const;
@@ -60,7 +60,7 @@ describe("allow-memory-crud", () => {
 
   describe("paths outside memory dir pass through", () => {
     const cases = [
-      ["sibling tool-results", () => read(`${HOME}/.claude/projects/-Users-bryce-Dev-toolgate/tool-results/foo.txt`)],
+      ["sibling tool-results", () => read(`${HOME}/.claude/projects/-home-user-project/tool-results/foo.txt`)],
       ["project file", () => write(`${PROJECT}/src/index.ts`)],
       ["plain home file", () => read(`${HOME}/.bashrc`)],
       ["fake memory prefix", () => write(`${HOME}/.claude/projects/x/memory-but-not-really/foo.md`)],
@@ -87,7 +87,7 @@ describe("allow-memory-crud", () => {
     });
 
     it("allows rm with tilde path", async () => {
-      const result = await run(bash("rm ~/.claude/projects/-Users-bryce-Dev-toolgate/memory/stale.md"));
+      const result = await run(bash("rm ~/.claude/projects/-home-user-project/memory/stale.md"));
       expect(result.verdict).toBe(ALLOW);
     });
 

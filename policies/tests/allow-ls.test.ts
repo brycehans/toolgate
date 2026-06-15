@@ -57,7 +57,7 @@ describe("allow-ls", () => {
       "ls ~/.aws/credentials.d",
       `ls ${HOME}/.claude`,
       `ls ${HOME}/.claude/plugins/marketplaces`,
-      "ls /Users/bryce/.gnupg",
+      "ls /home/user/.gnupg",
       `ls ${PROJECT}/.git/refs`,
       "ls -la src/.cache nested",
     ];
