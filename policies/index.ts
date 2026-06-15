@@ -7,6 +7,7 @@ import denyGitChained from "./deny-git-chained";
 import denyGhHeredoc from "./deny-gh-heredoc";
 import denySshCompound from "./deny-ssh-compound";
 import denyMixedPureChains from "./deny-mixed-pure-chains";
+import denyPerlOneLiners from "./deny-perl-one-liners";
 import redirectPythonJsonToFx from "./redirect-python-json-to-fx";
 import redirectPlansToProject from "./redirect-plans-to-project";
 import allowBunTest from "./allow-bun-test";
@@ -75,6 +76,7 @@ export const builtinPolicies = [
   denyGhHeredoc,
   denySshCompound,
   denyMixedPureChains,
+  denyPerlOneLiners,
   allowBunTest,
   allowGitAdd,
   allowGitDiff,

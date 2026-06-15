@@ -22,6 +22,23 @@ const allowBashGrepInProject: Policy = {
     const tokens = getArgs(cmds[0]);
     if (!tokens || !GREP_COMMANDS.has(tokens[0])) return;
 
+    // For rg specifically, reject flags that execute commands or read arbitrary files
+    if (tokens[0] === "rg") {
+      const blockedExact = [
+        "--pre", "--preprocessor", "--pre-glob", "--hostname-bin",
+        "-z", "--search-zip",
+        "-f", "--file", "--ignore-file",
+      ];
+      const blockedPrefix = [
+        "--pre=", "--preprocessor=", "--pre-glob=", "--hostname-bin=",
+        "--file=", "--ignore-file=",
+      ];
+      for (const t of tokens.slice(1)) {
+        if (blockedExact.includes(t)) return;
+        if (blockedPrefix.some((p) => t.startsWith(p))) return;
+      }
+    }
+
     // All subsequent pipeline segments must be safe filters
     for (let i = 1; i < cmds.length; i++) {
       const segArgs = getArgs(cmds[i]);
