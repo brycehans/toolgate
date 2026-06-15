@@ -1,10 +1,12 @@
 import { describe, expect, it } from "bun:test";
+import { homedir } from "node:os";
 import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
-import allowBashFindInProject from "../allow-bash-find-in-project";
+import allowBashFind from "../allow-bash-find";
 
-const run = adaptHandler(allowBashFindInProject.action!, allowBashFindInProject.handler as any);
+const run = adaptHandler(allowBashFind.action!, allowBashFind.handler as any);
 
-const PROJECT = "/home/user/project";
+const HOME = homedir();
+const PROJECT = `${HOME}/some-project`;
 
 function bash(command: string, cwd = PROJECT, projectRoot: string | null = PROJECT): ToolCall {
   return {
@@ -14,8 +16,8 @@ function bash(command: string, cwd = PROJECT, projectRoot: string | null = PROJE
   };
 }
 
-describe("allow-bash-find-in-project", () => {
-  describe("allows find within project", () => {
+describe("allow-bash-find", () => {
+  describe("allows find under $HOME", () => {
     const allowed = [
       "find",
       "find .",
@@ -27,9 +29,13 @@ describe("allow-bash-find-in-project", () => {
       `find ${PROJECT}/src`,
       `find ${PROJECT}`,
       `find ${PROJECT} -name '*.ts'`,
+      `find ${HOME}/Dev`,
+      `find ${HOME}/.claude -name '*.json'`,
+      `find ${HOME}`,
+      "find ~/.claude -name '*.json'",
+      "find ~/Dev -maxdepth 2 -name '*.json'",
+      "find ~",
       "find . -name '*.ts' -o -name '*.js'",
-      "find . -type f -name '*.blade.php' -o -name '*.tsx' -o -name '*.ts'",
-      "find . -name 'main.ts' -o -name 'main.tsx'",
     ];
 
     for (const cmd of allowed) {
@@ -40,12 +46,12 @@ describe("allow-bash-find-in-project", () => {
     }
   });
 
-  describe("rejects find outside project", () => {
+  describe("rejects find outside $HOME", () => {
     const rejected = [
       "find /etc",
-      "find /home/user/other-project",
       "find /tmp",
-      `find ${PROJECT}-evil`,
+      "find /Applications",
+      "find /var/log",
     ];
 
     for (const cmd of rejected) {
@@ -56,7 +62,7 @@ describe("allow-bash-find-in-project", () => {
     }
   });
 
-  describe("rejects bare find when cwd is outside project", () => {
+  describe("rejects bare find when cwd is outside $HOME", () => {
     it("rejects find in /tmp", async () => {
       const result = await run(bash("find", "/tmp"));
       expect(result.verdict).toBe(NEXT);
@@ -88,11 +94,10 @@ describe("allow-bash-find-in-project", () => {
       "find . -name '*.ts' | head -10",
       "find . -name '*.ts' | grep src",
       "find . -type f | wc -l",
-      "find . -name '*.php' | grep -i controller | head -5",
       `find ${PROJECT}/src -name '*.ts' | sort`,
       "find . | tail -20",
       "find . -name '*.ts' | cut -d/ -f2 | sort | uniq",
-      "find resources -type f | grep -E '(form|Form)' | sort | head -80",
+      `find ${HOME}/.claude -name '*.json' | head -20`,
     ];
 
     for (const cmd of allowed) {
@@ -109,7 +114,6 @@ describe("allow-bash-find-in-project", () => {
       "find . | sh -c 'cat'",
       "find . | tee /tmp/out",
       "find . -name '*.ts' | sort -o outfile",
-      "find . | uniq input output",
     ];
 
     for (const cmd of rejected) {
@@ -153,11 +157,6 @@ describe("allow-bash-find-in-project", () => {
         expect(result.verdict).toBe(NEXT);
       });
     }
-  });
-
-  it("passes through when no project root", async () => {
-    const result = await run(bash("find .", PROJECT, null));
-    expect(result.verdict).toBe(NEXT);
   });
 
   it("passes through non-find commands", async () => {

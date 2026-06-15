@@ -15,7 +15,7 @@ import allowGitDiff from "./allow-git-diff";
 import allowGitLog from "./allow-git-log";
 import allowGitStatus from "./allow-git-status";
 import allowGrepInProject from "./allow-grep-in-project";
-import allowLsInProject from "./allow-ls-in-project";
+import allowLs from "./allow-ls";
 import allowAgent from "./allow-agent";
 import allowExploreInProject from "./allow-explore-in-project";
 import allowReadInProject from "./allow-read-in-project";
@@ -25,7 +25,7 @@ import allowPlanInProject from "./allow-plan-in-project";
 import allowWebFetchClaude from "./allow-webfetch-claude";
 import allowTaskCrud from "./allow-task-crud";
 import allowGhReadOnly from "./allow-gh-read-only";
-import allowBashFindInProject from "./allow-bash-find-in-project";
+import allowBashFind from "./allow-bash-find";
 import allowSuperpowersSkills from "./allow-superpowers-skills";
 import allowGitCheckIgnore from "./allow-git-check-ignore";
 import allowGitRevParse from "./allow-git-rev-parse";
@@ -55,11 +55,14 @@ import allowRmProjectTmp from "./allow-rm-project-tmp";
 import allowNpmInstall from "./allow-npm-install";
 import allowNpxSafe from "./allow-npx-safe";
 import allowSleep from "./allow-sleep";
+import allowDate from "./allow-date";
 import allowNonDestructiveGit from "./allow-non-destructive-git";
 import allowGhIssuePr from "./allow-gh-issue-pr";
 import allowTmux from "./allow-tmux";
 import allowAwsCli from "./allow-aws-cli";
 import allowBrew from "./allow-brew";
+import allowToolgateTest from "./allow-toolgate-test";
+import allowMemoryCrud from "./allow-memory-crud";
 
 export const builtinPolicies = [
   denyGitAddAndCommit,
@@ -78,7 +81,7 @@ export const builtinPolicies = [
   allowGitLog,
   allowGitStatus,
   allowGrepInProject,
-  allowLsInProject,
+  allowLs,
   allowAgent,
   allowExploreInProject,
   allowReadInProject,
@@ -89,7 +92,7 @@ export const builtinPolicies = [
   allowTaskCrud,
   allowGhReadOnly,
   allowGhIssuePr,
-  allowBashFindInProject,
+  allowBashFind,
   allowBashGrepInProject,
   allowSuperpowersSkills,
   allowGitCheckIgnore,
@@ -120,8 +123,11 @@ export const builtinPolicies = [
   allowNpmInstall,
   allowNpxSafe,
   allowSleep,
+  allowDate,
   allowNonDestructiveGit,
   allowTmux,
   allowAwsCli,
   allowBrew,
+  allowToolgateTest,
+  allowMemoryCrud,
 ];

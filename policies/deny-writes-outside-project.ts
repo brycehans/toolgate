@@ -1,9 +1,25 @@
 import { homedir } from "os";
-import { resolve } from "path";
+import { join, resolve } from "path";
 import { isWithinProject, type Policy } from "../src";
 import { parseShell, findWriteRedirects, findTeeTargets, findWriteCommandTargets, getRedirects, Op, wordToString } from "./parse-bash-ast";
 
 const SAFE_WRITE_TARGETS = new Set(["/dev/null", "/dev/stderr", "/dev/stdout"]);
+
+const MEMORY_PROJECTS_DIR = join(homedir(), ".claude", "projects");
+
+/**
+ * Claude-owned auto-memory files live at ~/.claude/projects/<encoded>/memory/.
+ * They are an explicit sanctioned write target outside the project root —
+ * see allow-memory-crud.ts for the matching allow rule.
+ */
+function isMemoryPath(path: string): boolean {
+  const expanded = path === "~" ? homedir()
+    : path.startsWith("~/") ? homedir() + path.slice(1)
+    : path;
+  if (!expanded.startsWith(MEMORY_PROJECTS_DIR + "/")) return false;
+  const rel = expanded.slice(MEMORY_PROJECTS_DIR.length + 1);
+  return /^[^/]+\/memory\/[^/]+/.test(rel);
+}
 
 const denyWritesOutsideProject: Policy = {
   name: "Deny writes outside project",
@@ -65,7 +81,9 @@ const denyWritesOutsideProject: Policy = {
 export default denyWritesOutsideProject;
 
 function isInsideProject(filePath: string, context: { projectRoot: string; additionalDirs: string[] }): boolean {
-  return SAFE_WRITE_TARGETS.has(filePath) || isWithinProject(filePath, context);
+  if (SAFE_WRITE_TARGETS.has(filePath)) return true;
+  if (isMemoryPath(filePath)) return true;
+  return isWithinProject(filePath, context);
 }
 
 function resolvePath(p: string, cwd: string): string | null {

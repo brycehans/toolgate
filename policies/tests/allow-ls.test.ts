@@ -1,9 +1,11 @@
 import { describe, expect, it } from "bun:test";
+import { homedir } from "node:os";
 import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
-import allowLsInProject from "../allow-ls-in-project";
+import allowLs from "../allow-ls";
 
-const run = adaptHandler(allowLsInProject.action!, allowLsInProject.handler as any);
+const run = adaptHandler(allowLs.action!, allowLs.handler as any);
 
+const HOME = homedir();
 const PROJECT = "/home/user/project";
 
 function bash(command: string, cwd = PROJECT, projectRoot: string | null = PROJECT): ToolCall {
@@ -14,8 +16,8 @@ function bash(command: string, cwd = PROJECT, projectRoot: string | null = PROJE
   };
 }
 
-describe("allow-ls-in-project", () => {
-  describe("allows ls within project", () => {
+describe("allow-ls", () => {
+  describe("allows ls against non-dot paths", () => {
     const allowed = [
       "ls",
       "ls -la",
@@ -24,9 +26,16 @@ describe("allow-ls-in-project", () => {
       "ls ./src",
       "ls src/components",
       "ls .",
+      "ls ..",
       "ls -la src",
       `ls ${PROJECT}/src`,
       `ls ${PROJECT}`,
+      "ls /etc",
+      "ls /home/user/other-project",
+      "ls /tmp",
+      "ls /Applications",
+      `ls ${PROJECT}-evil`,
+      `ls ${HOME}/Dev`,
     ];
 
     for (const cmd of allowed) {
@@ -37,12 +46,20 @@ describe("allow-ls-in-project", () => {
     }
   });
 
-  describe("rejects ls outside project", () => {
+  describe("rejects ls against dot-prefixed segments", () => {
     const rejected = [
-      "ls /etc",
-      "ls /home/user/other-project",
-      "ls /tmp",
-      `ls ${PROJECT}-evil`,
+      "ls .git",
+      "ls .env",
+      "ls -la .ssh",
+      "ls src/.cache",
+      "ls ./.next",
+      "ls ~/.ssh",
+      "ls ~/.aws/credentials.d",
+      `ls ${HOME}/.claude`,
+      `ls ${HOME}/.claude/plugins/marketplaces`,
+      "ls /Users/bryce/.gnupg",
+      `ls ${PROJECT}/.git/refs`,
+      "ls -la src/.cache nested",
     ];
 
     for (const cmd of rejected) {
@@ -53,15 +70,20 @@ describe("allow-ls-in-project", () => {
     }
   });
 
-  describe("rejects bare ls when cwd is outside project", () => {
-    it("rejects ls in /tmp", async () => {
+  describe("allows ls regardless of cwd", () => {
+    it("allows ls in /tmp", async () => {
       const result = await run(bash("ls", "/tmp"));
-      expect(result.verdict).toBe(NEXT);
+      expect(result.verdict).toBe(ALLOW);
     });
 
-    it("rejects ls -la in /tmp", async () => {
+    it("allows ls -la in /tmp", async () => {
       const result = await run(bash("ls -la", "/tmp"));
-      expect(result.verdict).toBe(NEXT);
+      expect(result.verdict).toBe(ALLOW);
+    });
+
+    it("allows ls when there is no project root", async () => {
+      const result = await run(bash("ls", PROJECT, null));
+      expect(result.verdict).toBe(ALLOW);
     });
   });
 
@@ -88,6 +110,7 @@ describe("allow-ls-in-project", () => {
       "ls -la | grep foo | head -5",
       `ls ${PROJECT}/src | sort`,
       "ls -la | grep test | wc -l",
+      "ls /etc | grep host",
     ];
 
     for (const cmd of allowed) {
@@ -112,11 +135,6 @@ describe("allow-ls-in-project", () => {
         expect(result.verdict).toBe(NEXT);
       });
     }
-  });
-
-  it("passes through when no project root", async () => {
-    const result = await run(bash("ls", PROJECT, null));
-    expect(result.verdict).toBe(NEXT);
   });
 
   it("passes through non-ls commands", async () => {

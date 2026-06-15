@@ -1,15 +1,35 @@
 import { resolve } from "node:path";
-import { isWithinProject, type Policy } from "../src";
+import { homedir } from "node:os";
+import type { Policy } from "../src";
 import { parseShell, getPipelineCommands, getArgs, isSafeFilter } from "./parse-bash-ast";
 
-const allowBashFindInProject: Policy = {
-  name: "Allow bash find in project",
-  description: "Permits find commands when all paths are within the project root",
+const HOME = homedir();
+
+function resolveHome(p: string): string {
+  if (p === "~") return HOME;
+  if (p.startsWith("~/")) return HOME + p.slice(1);
+  return p;
+}
+
+function isUnderHome(path: string, cwd: string): string | null {
+  const expanded = resolveHome(path);
+  const resolved = resolve(cwd, expanded);
+  if (resolved === HOME || resolved.startsWith(HOME + "/")) return resolved;
+  return null;
+}
+
+/**
+ * Allow `find` when all search paths resolve to somewhere under $HOME.
+ * Dangerous flags (-exec, -delete, -ok, -fprint*, etc.) are rejected at the
+ * AST level. Pipelines must consist only of safe filters.
+ */
+const allowBashFind: Policy = {
+  name: "Allow bash find",
+  description: "Permits find commands when all search paths are under $HOME",
   action: "allow",
   handler: async (call) => {
     if (call.tool !== "Bash") return;
     if (typeof call.args.command !== "string") return;
-    if (!call.context.projectRoot) return;
 
     const ast = await parseShell(call.args.command);
     if (!ast || ast.Stmts.length !== 1) return;
@@ -42,7 +62,6 @@ const allowBashFindInProject: Policy = {
       if (t === "(" || t === ")" || t === "\\(" || t === "\\)") return;
     }
 
-    const root = call.context.projectRoot;
     const args = tokens.slice(1);
     const paths: string[] = [];
     for (const arg of args) {
@@ -51,15 +70,11 @@ const allowBashFindInProject: Policy = {
     }
 
     if (paths.length === 0) {
-      return isWithinProject(call.context.cwd, call.context) ? true : undefined;
+      return isUnderHome(call.context.cwd, call.context.cwd) ? true : undefined;
     }
 
-    const allInProject = paths.every((p) => {
-      const resolved = resolve(call.context.cwd, p);
-      return isWithinProject(resolved, call.context);
-    });
-
-    return allInProject ? true : undefined;
+    const allUnderHome = paths.every((p) => isUnderHome(p, call.context.cwd) !== null);
+    return allUnderHome ? true : undefined;
   },
 };
-export default allowBashFindInProject;
+export default allowBashFind;
