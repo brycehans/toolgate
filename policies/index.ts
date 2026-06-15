@@ -10,6 +10,7 @@ import denyMixedPureChains from "./deny-mixed-pure-chains";
 import denyPerlOneLiners from "./deny-perl-one-liners";
 import denyWranglerPipes from "./deny-wrangler-pipes";
 import redirectTrivialWranglerToRead from "./redirect-trivial-wrangler-to-read";
+import denyAndChains from "./deny-and-chains";
 import redirectPythonJsonToFx from "./redirect-python-json-to-fx";
 import redirectPlansToProject from "./redirect-plans-to-project";
 import allowBunTest from "./allow-bun-test";
@@ -82,6 +83,7 @@ export const builtinPolicies = [
   denyPerlOneLiners,
   denyWranglerPipes,
   redirectTrivialWranglerToRead,
+  denyAndChains,
   allowBunTest,
   allowGitAdd,
   allowGitDiff,
