@@ -9,6 +9,7 @@ import denySshCompound from "./deny-ssh-compound";
 import denyMixedPureChains from "./deny-mixed-pure-chains";
 import denyPerlOneLiners from "./deny-perl-one-liners";
 import denyWranglerPipes from "./deny-wrangler-pipes";
+import redirectTrivialWranglerToRead from "./redirect-trivial-wrangler-to-read";
 import redirectPythonJsonToFx from "./redirect-python-json-to-fx";
 import redirectPlansToProject from "./redirect-plans-to-project";
 import allowBunTest from "./allow-bun-test";
@@ -79,6 +80,7 @@ export const builtinPolicies = [
   denyMixedPureChains,
   denyPerlOneLiners,
   denyWranglerPipes,
+  redirectTrivialWranglerToRead,
   allowBunTest,
   allowGitAdd,
   allowGitDiff,
