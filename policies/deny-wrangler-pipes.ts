@@ -17,12 +17,12 @@ const STEERING_MESSAGE = `Pipelines like \`<cmd> | jq '<filter>'\` waste the lef
 
   Bad:   gh issue view 731 --json title,body | fx '.title + (.body || "")'
   Good:  gh issue view 731 --json title,body > tmp/issue.json
-         fx tmp/issue.json '<filter>'       # iterate without re-running gh
+         fx '<filter>' < tmp/issue.json     # iterate without re-running gh
 
-These wranglers all read file args directly — no \`cat | wrangler\` needed:
+Read the saved file via the canonical form for each wrangler:
 
   jq '<filter>' tmp/file.json
-  fx tmp/file.json '<filter>'                (note: fx takes file BEFORE filter)
+  fx '<filter>' < tmp/file.json              (fx-as-first-arg has parser traps: leading \`/\` becomes a regex, \`.field\` hits strict-mode)
   yq '<filter>' tmp/file.yaml
   xq -x '<xpath>' tmp/file.xml
   htmlq '<selector>' < tmp/file.html

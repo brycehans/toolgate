@@ -44,8 +44,8 @@ function isPythonJsonTool(cmds: ReturnType<typeof getPipelineCommands>): boolean
 }
 
 const DENY_MESSAGE =
-  "Use `fx` for JSON extraction (`| fx '.field.subfield'`), " +
-  "`gron` for path discovery (`| gron | grep key`), " +
+  "Use `fx` for JSON extraction (save to `tmp/file.json` first, then `fx '<filter>' < tmp/file.json` — piping into fx is denied to avoid wasting the LHS), " +
+  "`gron` for path discovery (`gron tmp/file.json | grep key`), " +
   "or the Read tool to inspect JSON files directly. " +
   "Only use Python for complex transforms that genuinely need it (atomic file writes, multi-step logic with non-JSON inputs).";
 
