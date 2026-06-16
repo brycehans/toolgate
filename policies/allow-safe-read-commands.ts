@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { isWithinProject, type Policy } from "../src";
-import { parseShell, getPipelineCommands, getArgs, isSafeFilter } from "./parse-bash-ast";
+import { parseShell, getPipelineCommands, getArgs, isSafeFilter, wordToString, Op } from "./parse-bash-ast";
+import type { Stmt } from "./parse-bash-ast";
 
 /**
  * Read-only commands safe to run standalone on files within the project.
@@ -19,6 +20,7 @@ const SAFE_READ_COMMANDS = new Set([
   "du",
   "diff",
   "jq",
+  "fx",
   "sed",
 ]);
 
@@ -91,6 +93,23 @@ function getJqFilePaths(tokens: string[]): string[] {
   return paths;
 }
 
+/**
+ * Extract file paths from `<` stdin-redirect targets on the first pipeline segment.
+ * Other redirect ops (`>`, `>>`, etc.) are ignored here — write redirects are handled
+ * by the separate deny-writes-outside-project policy. This function exists so the
+ * in-project containment check covers `cmd < file` reads as well as positional args.
+ */
+function getStdinRedirectPaths(stmt: Stmt): string[] {
+  const paths: string[] = [];
+  if (!stmt.Redirs) return paths;
+  for (const r of stmt.Redirs) {
+    if (r.Op !== Op.RdrIn) continue;
+    const target = wordToString(r.Word);
+    if (target) paths.push(target);
+  }
+  return paths;
+}
+
 function isInProject(path: string, cwd: string, context: { projectRoot: string; additionalDirs: string[] }): boolean {
   const resolved = resolve(cwd, path);
   return isWithinProject(resolved, context);
@@ -128,11 +147,15 @@ const allowSafeReadCommands: Policy = {
       if (!segArgs || !isSafeFilter(segArgs)) return;
     }
 
-    const paths = tokens[0] === "sed"
+    const positionalPaths = tokens[0] === "sed"
       ? getSedFilePaths(tokens)
       : tokens[0] === "jq"
       ? getJqFilePaths(tokens)
       : tokens.slice(1).filter((t) => !t.startsWith("-"));
+
+    // Also gate on `<` redirect targets so `cmd < file` is constrained the same as `cmd file`.
+    const redirectPaths = getStdinRedirectPaths(ast.Stmts[0]);
+    const paths = [...positionalPaths, ...redirectPaths];
 
     // No file args — allowed only if cwd is in project
     if (paths.length === 0) {

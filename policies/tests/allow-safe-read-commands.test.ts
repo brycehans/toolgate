@@ -143,6 +143,66 @@ describe("allow-safe-read-commands", () => {
     });
   });
 
+  describe("allows fx within project", () => {
+    const allowed = [
+      `fx '.version' < ${PROJECT}/package.json`,
+      "fx '.version' < package.json",
+      "fx '.users[0].name' < data.json",
+      `fx ${PROJECT}/data.json`,
+      "fx 'this.fixtures.length' < e2e/fixtures.json",
+    ];
+
+    for (const cmd of allowed) {
+      it(`allows: ${cmd}`, async () => {
+        const result = await run(bash(cmd));
+        expect(result.verdict).toBe(ALLOW);
+      });
+    }
+  });
+
+  describe("rejects fx with files outside project", () => {
+    const rejected = [
+      "fx '.x' < /etc/passwd",
+      "fx '.x' < /home/user/other/data.json",
+    ];
+
+    for (const cmd of rejected) {
+      it(`rejects: ${cmd}`, async () => {
+        const result = await run(bash(cmd));
+        expect(result.verdict).toBe(NEXT);
+      });
+    }
+  });
+
+  describe("constrains `<` stdin-redirect targets to project", () => {
+    const rejected = [
+      "cat < /etc/passwd",
+      "head < /etc/hosts",
+      "wc -l < /etc/services",
+      "jq '.' < /etc/secrets.json",
+    ];
+
+    for (const cmd of rejected) {
+      it(`rejects: ${cmd}`, async () => {
+        const result = await run(bash(cmd));
+        expect(result.verdict).toBe(NEXT);
+      });
+    }
+
+    const allowed = [
+      "cat < README.md",
+      "head < src/index.ts",
+      "wc -l < src/index.ts",
+    ];
+
+    for (const cmd of allowed) {
+      it(`allows: ${cmd}`, async () => {
+        const result = await run(bash(cmd));
+        expect(result.verdict).toBe(ALLOW);
+      });
+    }
+  });
+
   describe("rejects bare commands when cwd is outside project", () => {
     it("rejects cat with no args in /tmp", async () => {
       const result = await run(bash("cat", "/tmp"));
