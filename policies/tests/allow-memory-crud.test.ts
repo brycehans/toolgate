@@ -126,4 +126,51 @@ describe("allow-memory-crud", () => {
       expect(result.verdict).toBe(NEXT);
     });
   });
+
+  describe("ls via Bash", () => {
+    it("allows ls of the memory dir", async () => {
+      const result = await run(bash(`ls ${MEMORY}`));
+      expect(result.verdict).toBe(ALLOW);
+    });
+
+    it("allows ls of the memory dir with trailing slash", async () => {
+      const result = await run(bash(`ls ${MEMORY}/`));
+      expect(result.verdict).toBe(ALLOW);
+    });
+
+    it("allows ls of a memory file", async () => {
+      const result = await run(bash(`ls ${MEMORY}/MEMORY.md`));
+      expect(result.verdict).toBe(ALLOW);
+    });
+
+    it("allows ls -la of the memory dir", async () => {
+      const result = await run(bash(`ls -la ${MEMORY}`));
+      expect(result.verdict).toBe(ALLOW);
+    });
+
+    it("allows ls with tilde path", async () => {
+      const result = await run(bash("ls ~/.claude/projects/-home-user-project/memory"));
+      expect(result.verdict).toBe(ALLOW);
+    });
+
+    it("passes through ls with no path arg", async () => {
+      const result = await run(bash("ls"));
+      expect(result.verdict).toBe(NEXT);
+    });
+
+    it("rejects ls of non-memory path", async () => {
+      const result = await run(bash(`ls ${PROJECT}/src`));
+      expect(result.verdict).toBe(NEXT);
+    });
+
+    it("rejects ls of mixed memory and non-memory paths", async () => {
+      const result = await run(bash(`ls ${MEMORY} /etc`));
+      expect(result.verdict).toBe(NEXT);
+    });
+
+    it("rejects ls chained", async () => {
+      const result = await run(bash(`ls ${MEMORY} && echo done`));
+      expect(result.verdict).toBe(NEXT);
+    });
+  });
 });
