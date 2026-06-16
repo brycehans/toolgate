@@ -57,6 +57,7 @@ import allowToolSearch from "./allow-tool-search";
 import allowGitLocalRepo from "./allow-git-local-repo";
 import allowCronCrud from "./allow-cron-crud";
 import allowRmProjectTmp from "./allow-rm-project-tmp";
+import allowRmdirProjectTmp from "./allow-rmdir-project-tmp";
 import allowNpmInstall from "./allow-npm-install";
 import allowNpxSafe from "./allow-npx-safe";
 import allowSleep from "./allow-sleep";
@@ -133,6 +134,7 @@ export const builtinPolicies = [
   allowToolSearch,
   allowCronCrud,
   allowRmProjectTmp,
+  allowRmdirProjectTmp,
   allowNpmInstall,
   allowNpxSafe,
   allowSleep,
