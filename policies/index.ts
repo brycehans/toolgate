@@ -61,6 +61,7 @@ import allowNpmInstall from "./allow-npm-install";
 import allowNpxSafe from "./allow-npx-safe";
 import allowSleep from "./allow-sleep";
 import allowWhich from "./allow-which";
+import allowVersionProbes from "./allow-version-probes";
 import allowDate from "./allow-date";
 import allowNonDestructiveGit from "./allow-non-destructive-git";
 import allowGhIssuePr from "./allow-gh-issue-pr";
@@ -135,6 +136,7 @@ export const builtinPolicies = [
   allowNpxSafe,
   allowSleep,
   allowWhich,
+  allowVersionProbes,
   allowDate,
   allowNonDestructiveGit,
   allowTmux,

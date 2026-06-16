@@ -1,6 +1,6 @@
 {
   "name": "@brycehanscomb/toolgate",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "devDependencies": {
     "bun-types": "latest"
   },
