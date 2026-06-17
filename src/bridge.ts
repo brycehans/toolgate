@@ -6,18 +6,17 @@
  * Usage:
  *   echo '{"tool":"Bash","args":{"command":"git push"},"cwd":"/path"}' | bun run src/bridge.ts
  *
- * Output: {"verdict":"allow"} | {"verdict":"deny","reason":"..."} | {"verdict":"ask","reason":"..."} | {"verdict":"next"}
+ * Output: {"verdict":"allow"} | {"verdict":"deny","reason":"..."} | {"verdict":"next"}
  */
 
 import { buildToolCall } from "./runner"
 import { loadConfigs } from "./config"
 import { runPolicy } from "./policy"
-import { ALLOW, ASK, DENY, NEXT } from "./verdicts"
+import { ALLOW, DENY, NEXT } from "./verdicts"
 
 const VERDICT_NAMES: Record<symbol, string> = {
   [ALLOW]: "allow",
   [DENY]: "deny",
-  [ASK]: "ask",
   [NEXT]: "next",
 }
 
