@@ -1,4 +1,4 @@
-import { deny, next, type Policy } from "../src";
+import type { Policy } from "../src";
 import { parseShell, hasUnsafeNodes, Op } from "./parse-bash-ast";
 import type { ShellFile } from "./parse-bash-ast";
 
@@ -25,37 +25,38 @@ const denyGhHeredoc: Policy = {
   name: "Deny gh/git heredoc/command substitution",
   description:
     "Rejects gh/git commands containing $(…) or heredoc redirects — use Write tool + --body-file, --input, or -F instead",
+  action: "deny",
   handler: async (call) => {
-    if (call.tool !== "Bash") return next();
+    if (call.tool !== "Bash") return;
     const command = call.args.command;
-    if (typeof command !== "string") return next();
+    if (typeof command !== "string") return;
 
     // Quick check: must involve gh or git
-    if (!command.includes("gh ") && !command.includes("git ")) return next();
+    if (!command.includes("gh ") && !command.includes("git ")) return;
 
     const ast = await parseShell(command);
-    if (!ast) return next();
+    if (!ast) return;
 
     // Deny if the AST contains unsafe nodes (CmdSubst, ParamExp, etc.)
     // or heredoc redirects (<< / <<-)
-    if (!hasUnsafeNodes(ast) && !hasHeredocRedirects(ast)) return next();
+    if (!hasUnsafeNodes(ast) && !hasHeredocRedirects(ast)) return;
 
     if (command.includes("git ")) {
-      return deny(
+      return (
         "Do not use command substitution or heredocs in git commands. " +
-          "Instead, write the message to a file in the project's tmp/ directory with the Write tool, " +
-          "then use `git commit -F tmp/<file>` or `git tag -F tmp/<file>`. " +
-          "Clean up with `rm tmp/<file>` afterwards. " +
-          "This avoids shell escaping issues and lets the user review the content first.",
+        "Instead, write the message to a file in the project's tmp/ directory with the Write tool, " +
+        "then use `git commit -F tmp/<file>` or `git tag -F tmp/<file>`. " +
+        "Clean up with `rm tmp/<file>` afterwards. " +
+        "This avoids shell escaping issues and lets the user review the content first."
       );
     }
 
-    return deny(
+    return (
       "Do not use command substitution or heredocs in gh commands. " +
-        "Instead, write the body to a file in the project's tmp/ directory with the Write tool, " +
-        "then use `gh pr comment --body-file tmp/<file>`, `gh issue comment --body-file tmp/<file>`, " +
-        "or `gh api --input tmp/<file>`. Clean up with `rm tmp/<file>` afterwards. " +
-        "This avoids shell escaping issues and lets the user review the content first.",
+      "Instead, write the body to a file in the project's tmp/ directory with the Write tool, " +
+      "then use `gh pr comment --body-file tmp/<file>`, `gh issue comment --body-file tmp/<file>`, " +
+      "or `gh api --input tmp/<file>`. Clean up with `rm tmp/<file>` afterwards. " +
+      "This avoids shell escaping issues and lets the user review the content first."
     );
   },
 };

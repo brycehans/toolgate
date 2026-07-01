@@ -1,4 +1,4 @@
-import { allow, next, type Policy } from "../src";
+import type { Policy } from "../src";
 
 /**
  * Allow all ToolSearch tool calls unconditionally.
@@ -7,9 +7,10 @@ import { allow, next, type Policy } from "../src";
 const allowToolSearch: Policy = {
   name: "Allow ToolSearch",
   description: "Permits all ToolSearch tool calls",
+  action: "allow",
   handler: async (call) => {
-    if (call.tool !== "ToolSearch") return next();
-    return allow();
+    if (call.tool !== "ToolSearch") return;
+    return true;
   },
 };
 export default allowToolSearch;

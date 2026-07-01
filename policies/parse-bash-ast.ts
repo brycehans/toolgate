@@ -146,46 +146,39 @@ export async function parseShell(
 
 // AST query helpers
 
-export function wordToString(word: Word): string | null {
-  const parts = word.Parts;
-  if (parts.length === 0) return null;
-
-  if (parts.length === 1) {
-    const p = parts[0];
-    if (p.Type === "Lit") return (p as Lit).Value;
-    if (p.Type === "SglQuoted") return (p as SglQuoted).Value;
-    if (p.Type === "DblQuoted") {
-      const dbl = p as DblQuoted;
-      if (!dbl.Parts || dbl.Parts.length === 0) return "";
-      if (dbl.Parts.length === 1 && dbl.Parts[0].Type === "Lit") {
-        return (dbl.Parts[0] as Lit).Value;
-      }
-      return null;
-    }
-    return null;
-  }
-
-  // Multi-part: each part must resolve to a string
-  const values: string[] = [];
+/**
+ * Flatten a list of word parts to a constant string, or null if any part is
+ * dynamic (command/parameter/arithmetic substitution, process substitution).
+ *
+ * Only Lit, SglQuoted, and (recursively) DblQuoted parts are constant. shfmt
+ * commonly splits a double-quoted word into several Lit parts — e.g. it
+ * isolates a trailing `$` so `"\.(ts|tsx)$"` becomes ["\.(ts|tsx)", "$"]. Such
+ * a word is still a constant string, so we concatenate the literal parts rather
+ * than bailing out the moment there's more than one.
+ */
+function flattenLiteralParts(parts: WordPart[] | undefined): string | null {
+  if (!parts) return "";
+  let out = "";
   for (const p of parts) {
     if (p.Type === "Lit") {
-      values.push((p as Lit).Value);
+      out += (p as Lit).Value;
     } else if (p.Type === "SglQuoted") {
-      values.push((p as SglQuoted).Value);
+      out += (p as SglQuoted).Value;
     } else if (p.Type === "DblQuoted") {
-      const dbl = p as DblQuoted;
-      if (!dbl.Parts || dbl.Parts.length === 0) {
-        values.push("");
-      } else if (dbl.Parts.length === 1 && dbl.Parts[0].Type === "Lit") {
-        values.push((dbl.Parts[0] as Lit).Value);
-      } else {
-        return null;
-      }
+      const inner = flattenLiteralParts((p as DblQuoted).Parts);
+      if (inner === null) return null;
+      out += inner;
     } else {
+      // CmdSubst, ParamExp, ArithmExp, ProcSubst — dynamic, not a constant
       return null;
     }
   }
-  return values.join("");
+  return out;
+}
+
+export function wordToString(word: Word): string | null {
+  if (word.Parts.length === 0) return null;
+  return flattenLiteralParts(word.Parts);
 }
 
 /** Env var assignments that are safe to ignore (benign prefixes). */
@@ -430,6 +423,65 @@ const UNCONDITIONALLY_SAFE = new Set([
   "gron",
 ]);
 
+/** rg flags that consume the next token as their value. */
+const RG_FLAGS_WITH_VALUE = new Set([
+  "-r", "--replace",
+  "-e", "--regexp",
+  "-g", "--glob", "--iglob",
+  "-A", "-B", "-C", "--after-context", "--before-context", "--context",
+  "-t", "--type", "-T", "--type-not",
+  "-m", "--max-count",
+  "-E", "--encoding",
+  "--sort", "--sortr",
+  "-j", "--threads",
+  "--engine",
+  "--max-columns", "--max-depth", "--max-filesize",
+  "--color", "--colors",
+  "--context-separator", "--field-context-separator", "--field-match-separator",
+  "--path-separator",
+]);
+
+/** xq (Go variant) flags that consume the next token as their value. */
+const XQ_FLAGS_WITH_VALUE = new Set([
+  "-x", "--xpath",
+  "-q", "--query",
+  "-a", "--attr",
+]);
+
+function looksLikePath(arg: string): boolean {
+  return arg.startsWith("/") || arg.startsWith("~");
+}
+
+function hasAnyToken(tokens: string[], exact: string[], prefixes: string[]): boolean {
+  for (const t of tokens) {
+    if (exact.includes(t)) return true;
+    for (const p of prefixes) {
+      if (t.startsWith(p)) return true;
+    }
+  }
+  return false;
+}
+
+/** Extract positional (non-flag) args, accounting for flags that consume their next token as a value. */
+function getPositionals(tokens: string[], flagsWithValue: Set<string>): string[] {
+  const positionals: string[] = [];
+  let i = 1;
+  while (i < tokens.length) {
+    const t = tokens[i];
+    if (flagsWithValue.has(t)) {
+      i += 2;
+      continue;
+    }
+    if (t.startsWith("-")) {
+      i++;
+      continue;
+    }
+    positionals.push(t);
+    i++;
+  }
+  return positionals;
+}
+
 export function isSafeFilter(tokens: string[]): boolean {
   if (tokens.length === 0) return false;
   const cmd = tokens[0];
@@ -456,6 +508,71 @@ export function isSafeFilter(tokens: string[]): boolean {
     // Non-flag args (not starting with -) must be <= 1 (the input file)
     const nonFlags = tokens.slice(1).filter((t) => !t.startsWith("-"));
     return nonFlags.length <= 1;
+  }
+
+  if (cmd === "rg") {
+    // Block flags that exec commands, shell out to decompressors, or read arbitrary files
+    const blockedExact = [
+      "--pre", "--preprocessor", "--pre-glob", "--hostname-bin",
+      "-z", "--search-zip",
+      "-f", "--file", "--ignore-file",
+    ];
+    const blockedPrefix = [
+      "--pre=", "--preprocessor=", "--pre-glob=", "--hostname-bin=",
+      "--file=", "--ignore-file=",
+    ];
+    if (hasAnyToken(tokens.slice(1), blockedExact, blockedPrefix)) return false;
+    // Block path-like positionals (mid-pipeline rg should read stdin only)
+    const positionals = getPositionals(tokens, RG_FLAGS_WITH_VALUE);
+    for (const p of positionals) {
+      if (looksLikePath(p)) return false;
+    }
+    return true;
+  }
+
+  if (cmd === "sd") {
+    // sd with positional file args mutates those files in place.
+    // As a stdin filter it takes exactly 2 positional args: <find> <replace>.
+    const nonFlags = tokens.slice(1).filter((t) => !t.startsWith("-"));
+    return nonFlags.length === 2;
+  }
+
+  if (cmd === "choose") {
+    // -i / --input reads from an arbitrary file path (exfil vector)
+    const blockedExact = ["-i", "--input"];
+    const blockedPrefix = ["--input="];
+    if (hasAnyToken(tokens.slice(1), blockedExact, blockedPrefix)) return false;
+    return true;
+  }
+
+  if (cmd === "xq") {
+    // Block in-place writes, arbitrary file reads (jq Python wrapper flags), and module loading
+    const blockedExact = [
+      "-i", "--in-place",
+      "--rawfile", "--slurpfile",
+      "-f", "--from-file",
+      "-L", "--library-path",
+    ];
+    const blockedPrefix = [
+      "--in-place=", "--rawfile=", "--slurpfile=",
+      "--from-file=", "--library-path=",
+    ];
+    if (hasAnyToken(tokens.slice(1), blockedExact, blockedPrefix)) return false;
+    // Mid-pipeline xq should read stdin; reject bare positional file args
+    const positionals = getPositionals(tokens, XQ_FLAGS_WITH_VALUE);
+    if (positionals.length > 1) return false;
+    for (const p of positionals) {
+      if (looksLikePath(p)) return false;
+    }
+    return true;
+  }
+
+  if (cmd === "htmlq") {
+    // -f / --filename reads arbitrary files; -o / --output writes them
+    const blockedExact = ["-f", "--filename", "-o", "--output"];
+    const blockedPrefix = ["--filename=", "--output="];
+    if (hasAnyToken(tokens.slice(1), blockedExact, blockedPrefix)) return false;
+    return true;
   }
 
   return false;

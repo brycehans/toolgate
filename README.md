@@ -44,7 +44,7 @@ go install mvdan.cc/sh/v3/cmd/shfmt@latest
 ### Package
 
 ```bash
-bun install -g toolgate
+bun install -g @brycehanscomb/toolgate
 ```
 
 ## Setup

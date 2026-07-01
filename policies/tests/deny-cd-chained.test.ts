@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { DENY, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, DENY, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import denyCdChained from "../deny-cd-chained";
+
+const run = adaptHandler(denyCdChained.action!, denyCdChained.handler as any);
 
 const PROJECT = "/home/user/project";
 
@@ -23,7 +25,7 @@ describe("deny-cd-chained", () => {
 
     for (const cmd of denied) {
       it(`denies: ${cmd}`, async () => {
-        const result = await denyCdChained.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(DENY);
       });
     }
@@ -37,7 +39,7 @@ describe("deny-cd-chained", () => {
 
     for (const cmd of denied) {
       it(`denies: ${cmd}`, async () => {
-        const result = await denyCdChained.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(DENY);
       });
     }
@@ -45,7 +47,7 @@ describe("deny-cd-chained", () => {
 
   describe("denies cd chained with ||", () => {
     it("denies: cd /tmp || echo failed", async () => {
-      const result = await denyCdChained.handler(bash("cd /tmp || echo failed"));
+      const result = await run(bash("cd /tmp || echo failed"));
       expect(result.verdict).toBe(DENY);
     });
   });
@@ -60,7 +62,7 @@ describe("deny-cd-chained", () => {
 
     for (const cmd of allowed) {
       it(`passes through: ${cmd}`, async () => {
-        const result = await denyCdChained.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -76,7 +78,7 @@ describe("deny-cd-chained", () => {
 
     for (const cmd of allowed) {
       it(`passes through: ${cmd}`, async () => {
-        const result = await denyCdChained.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -88,7 +90,7 @@ describe("deny-cd-chained", () => {
       args: { file_path: "/foo" },
       context: { cwd: PROJECT, env: {}, projectRoot: PROJECT },
     };
-    const result = await denyCdChained.handler(call);
+    const result = await run(call);
     expect(result.verdict).toBe(NEXT);
   });
 });

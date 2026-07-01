@@ -1,7 +1,7 @@
 import { realpathSync } from "fs";
 import { homedir } from "os";
 import { resolve } from "path";
-import { allow, next, isWithinProject, type Policy } from "../src";
+import { isWithinProject, type Policy } from "../src";
 
 function resolvePath(p: string, projectRoot: string): string {
   if (p === "~") return homedir();
@@ -25,17 +25,18 @@ function tryRealpath(p: string): string | null {
 const allowReadInProject: Policy = {
   name: "Allow read in project",
   description: "Permits Read tool calls targeting files within the project root or additional directories",
+  action: "allow",
   handler: async (call) => {
     if (call.tool !== "Read") {
-      return next();
+      return;
     }
 
     if (!call.context.projectRoot) {
-      return next();
+      return;
     }
 
     const filePath = call.args.file_path;
-    if (typeof filePath !== "string") return next();
+    if (typeof filePath !== "string") return;
 
     const resolved = resolvePath(filePath, call.context.projectRoot);
 
@@ -50,11 +51,11 @@ const allowReadInProject: Policy = {
         realContext.additionalDirs = (call.context.additionalDirs ?? [])
           .map((d) => tryRealpath(d) ?? d);
       }
-      return isWithinProject(realTarget, realContext) ? allow() : next();
+      return isWithinProject(realTarget, realContext) ? true : undefined;
     }
 
     // File doesn't exist yet — fall back to string prefix check
-    return isWithinProject(resolved, call.context) ? allow() : next();
+    return isWithinProject(resolved, call.context) ? true : undefined;
   },
 };
 export default allowReadInProject;

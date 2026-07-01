@@ -1,4 +1,4 @@
-import { allow, next, type Policy } from "../src";
+import type { Policy } from "../src";
 
 /**
  * Allow all mcp__playwright__* tool calls unconditionally.
@@ -7,9 +7,10 @@ import { allow, next, type Policy } from "../src";
 const allowMcpPlaywright: Policy = {
   name: "Allow MCP Playwright",
   description: "Permits all Playwright browser automation tool calls",
+  action: "allow",
   handler: async (call) => {
-    if (!call.tool.startsWith("mcp__playwright__")) return next();
-    return allow();
+    if (!call.tool.startsWith("mcp__playwright__")) return;
+    return true;
   },
 };
 export default allowMcpPlaywright;

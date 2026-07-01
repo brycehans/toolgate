@@ -89,6 +89,25 @@ describe("wordToString", () => {
     const word = (file!.Stmts[0].Cmd as any).Args[1];
     expect(wordToString(word)).toBeNull();
   });
+
+  it("flattens a double-quoted word shfmt splits into multiple literal parts", async () => {
+    // shfmt isolates the trailing `$`, so this becomes two Lit parts
+    const file = await parseShell('grep -E "\\.(ts|tsx)$"');
+    const word = (file!.Stmts[0].Cmd as any).Args[2];
+    expect(wordToString(word)).toBe("\\.(ts|tsx)$");
+  });
+
+  it("flattens adjacent quoted/unquoted literals", async () => {
+    const file = await parseShell('echo foo"bar"\'baz\'');
+    const word = (file!.Stmts[0].Cmd as any).Args[1];
+    expect(wordToString(word)).toBe("foobarbaz");
+  });
+
+  it("returns null when a literal word is adjacent to a param expansion", async () => {
+    const file = await parseShell('echo "prefix-$HOME"');
+    const word = (file!.Stmts[0].Cmd as any).Args[1];
+    expect(wordToString(word)).toBeNull();
+  });
 });
 
 // getArgs
@@ -348,6 +367,26 @@ describe("isSafeFilter", () => {
       ["stat", "foo.txt"],
       ["du", "-sh", "."],
       ["diff", "a.txt", "b.txt"],
+      ["rg", "pattern"],
+      ["rg", "-i", "pattern"],
+      ["rg", "-oP", "(\\w+):(\\d+)"],
+      ["rg", "-oP", "(\\w+):(\\d+)", "--replace", "$1=$2"],
+      ["rg", "-r", "$1", "pattern"],
+      ["rg", "--replace", "$1", "(\\w+)"],
+      ["sd", "find", "replace"],
+      ["sd", "-p", "find", "replace"],
+      ["sd", "--preview", "find", "replace"],
+      ["sd", "-s", "literal", "literal"],
+      ["choose", "0"],
+      ["choose", "0", "2:4", "-1"],
+      ["choose", "-f", ":", "0", "2"],
+      ["xq", "."],
+      ["xq", "-r", ".items[]"],
+      ["xq", "-x", "/root/foo"],
+      ["xq", "-q", "div.item"],
+      ["htmlq", ".item"],
+      ["htmlq", "--text", "h1"],
+      ["htmlq", "-a", "href", "a"],
     ];
 
     for (const tokens of safe) {
@@ -366,6 +405,46 @@ describe("isSafeFilter", () => {
       ["sort", "-o", "outfile"],
       ["sort", "--output", "file"],
       ["uniq", "input", "output"],
+      ["rg", "--pre", "evil.sh", "pattern"],
+      ["rg", "--preprocessor", "evil.sh", "pattern"],
+      ["rg", "--pre=evil.sh", "pattern"],
+      ["rg", "--preprocessor=evil.sh", "pattern"],
+      ["rg", "--pre-glob", "*.log", "pattern"],
+      ["rg", "--hostname-bin", "uname", "pattern"],
+      ["rg", "--hostname-bin=uname", "pattern"],
+      ["rg", "-z", "pattern"],
+      ["rg", "--search-zip", "pattern"],
+      ["rg", "-f", "patterns.txt"],
+      ["rg", "--file", "patterns.txt"],
+      ["rg", "--file=patterns.txt"],
+      ["rg", "--ignore-file", "ig.txt"],
+      ["rg", "--ignore-file=ig.txt"],
+      ["rg", "pattern", "/etc/passwd"],
+      ["rg", "pattern", "~/.ssh/id_rsa"],
+      ["sd", "find", "replace", "file.txt"],
+      ["sd", "find", "replace", "a.txt", "b.txt"],
+      ["sd", "find"],
+      ["sd"],
+      ["choose", "-i", "/etc/passwd", "0"],
+      ["choose", "--input", "/etc/passwd", "0"],
+      ["choose", "--input=/etc/passwd", "0"],
+      ["xq", "-i", "config.xml"],
+      ["xq", "--in-place", "config.xml"],
+      ["xq", "--rawfile", "name", "/etc/passwd"],
+      ["xq", "--slurpfile", "name", "data.json"],
+      ["xq", "-f", "filter.jq"],
+      ["xq", "--from-file", "filter.jq"],
+      ["xq", "-L", "/lib"],
+      ["xq", "--library-path", "/lib"],
+      ["xq", "/etc/passwd"],
+      ["xq", "~/secrets.xml"],
+      ["xq", "filter", "data.xml"],
+      ["htmlq", "-f", "/etc/passwd", ".item"],
+      ["htmlq", "--filename", "/etc/passwd"],
+      ["htmlq", "--filename=/etc/passwd"],
+      ["htmlq", "-o", "/tmp/out.html"],
+      ["htmlq", "--output", "/tmp/out.html"],
+      ["htmlq", "--output=/tmp/out.html"],
     ];
 
     for (const tokens of unsafe) {

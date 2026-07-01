@@ -2,8 +2,10 @@ import { describe, expect, it, beforeAll, afterAll } from "bun:test";
 import { mkdirSync, symlinkSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
-import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowReadInProject from "../allow-read-in-project";
+
+const run = adaptHandler(allowReadInProject.action!, allowReadInProject.handler as any);
 
 const PROJECT = "/home/user/project";
 
@@ -17,41 +19,41 @@ function read(filePath: string): ToolCall {
 
 describe("allow-read-in-project", () => {
   it("allows reading a file in the project", async () => {
-    const result = await allowReadInProject.handler(
+    const result = await run(
       read(`${PROJECT}/src/index.ts`),
     );
     expect(result.verdict).toBe(ALLOW);
   });
 
   it("allows reading the project root itself", async () => {
-    const result = await allowReadInProject.handler(read(PROJECT));
+    const result = await run(read(PROJECT));
     expect(result.verdict).toBe(ALLOW);
   });
 
   it("allows relative paths within the project", async () => {
-    const result = await allowReadInProject.handler(
+    const result = await run(
       read("docs/tickets/promotheus-tickets.md"),
     );
     expect(result.verdict).toBe(ALLOW);
   });
 
   it("allows relative paths with dot prefix", async () => {
-    const result = await allowReadInProject.handler(read("./src/index.ts"));
+    const result = await run(read("./src/index.ts"));
     expect(result.verdict).toBe(ALLOW);
   });
 
   it("does not allow relative paths that escape the project", async () => {
-    const result = await allowReadInProject.handler(read("../../etc/passwd"));
+    const result = await run(read("../../etc/passwd"));
     expect(result.verdict).toBe(NEXT);
   });
 
   it("does not allow reading outside the project", async () => {
-    const result = await allowReadInProject.handler(read("/etc/passwd"));
+    const result = await run(read("/etc/passwd"));
     expect(result.verdict).toBe(NEXT);
   });
 
   it("does not allow reading home directory files", async () => {
-    const result = await allowReadInProject.handler(
+    const result = await run(
       read("~/.ssh/id_rsa"),
     );
     expect(result.verdict).toBe(NEXT);
@@ -63,7 +65,7 @@ describe("allow-read-in-project", () => {
       args: { command: "cat file.txt" },
       context: { cwd: PROJECT, env: {}, projectRoot: PROJECT },
     };
-    const result = await allowReadInProject.handler(call);
+    const result = await run(call);
     expect(result.verdict).toBe(NEXT);
   });
 
@@ -94,21 +96,21 @@ describe("allow-read-in-project", () => {
     }
 
     it("allows reading a real file in the project", async () => {
-      const result = await allowReadInProject.handler(
+      const result = await run(
         readReal(join(projectDir, "docs/real.md")),
       );
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("blocks symlink that escapes the project", async () => {
-      const result = await allowReadInProject.handler(
+      const result = await run(
         readReal(join(projectDir, "docs/escape/secret.txt")),
       );
       expect(result.verdict).toBe(NEXT);
     });
 
     it("blocks relative path through symlink escape", async () => {
-      const result = await allowReadInProject.handler(
+      const result = await run(
         readReal("docs/escape/secret.txt"),
       );
       expect(result.verdict).toBe(NEXT);

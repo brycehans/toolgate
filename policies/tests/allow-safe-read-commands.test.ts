@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowSafeReadCommands from "../allow-safe-read-commands";
+
+const run = adaptHandler(allowSafeReadCommands.action!, allowSafeReadCommands.handler as any);
 
 const PROJECT = "/home/user/project";
 
@@ -40,7 +42,7 @@ describe("allow-safe-read-commands", () => {
 
     for (const cmd of allowed) {
       it(`allows: ${cmd}`, async () => {
-        const result = await allowSafeReadCommands.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(ALLOW);
       });
     }
@@ -58,7 +60,7 @@ describe("allow-safe-read-commands", () => {
 
     for (const cmd of allowed) {
       it(`allows: ${cmd}`, async () => {
-        const result = await allowSafeReadCommands.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(ALLOW);
       });
     }
@@ -79,7 +81,7 @@ describe("allow-safe-read-commands", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowSafeReadCommands.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -96,7 +98,7 @@ describe("allow-safe-read-commands", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowSafeReadCommands.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -114,7 +116,7 @@ describe("allow-safe-read-commands", () => {
 
     for (const cmd of allowed) {
       it(`allows: ${cmd}`, async () => {
-        const result = await allowSafeReadCommands.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(ALLOW);
       });
     }
@@ -128,7 +130,7 @@ describe("allow-safe-read-commands", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowSafeReadCommands.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -136,19 +138,79 @@ describe("allow-safe-read-commands", () => {
 
   describe("allows jq with no file args (reads stdin) when cwd is in project", () => {
     it("allows jq with filter only", async () => {
-      const result = await allowSafeReadCommands.handler(bash("jq '.'"));
+      const result = await run(bash("jq '.'"));
       expect(result.verdict).toBe(ALLOW);
     });
   });
 
+  describe("allows fx within project", () => {
+    const allowed = [
+      `fx '.version' < ${PROJECT}/package.json`,
+      "fx '.version' < package.json",
+      "fx '.users[0].name' < data.json",
+      `fx ${PROJECT}/data.json`,
+      "fx 'this.fixtures.length' < e2e/fixtures.json",
+    ];
+
+    for (const cmd of allowed) {
+      it(`allows: ${cmd}`, async () => {
+        const result = await run(bash(cmd));
+        expect(result.verdict).toBe(ALLOW);
+      });
+    }
+  });
+
+  describe("rejects fx with files outside project", () => {
+    const rejected = [
+      "fx '.x' < /etc/passwd",
+      "fx '.x' < /home/user/other/data.json",
+    ];
+
+    for (const cmd of rejected) {
+      it(`rejects: ${cmd}`, async () => {
+        const result = await run(bash(cmd));
+        expect(result.verdict).toBe(NEXT);
+      });
+    }
+  });
+
+  describe("constrains `<` stdin-redirect targets to project", () => {
+    const rejected = [
+      "cat < /etc/passwd",
+      "head < /etc/hosts",
+      "wc -l < /etc/services",
+      "jq '.' < /etc/secrets.json",
+    ];
+
+    for (const cmd of rejected) {
+      it(`rejects: ${cmd}`, async () => {
+        const result = await run(bash(cmd));
+        expect(result.verdict).toBe(NEXT);
+      });
+    }
+
+    const allowed = [
+      "cat < README.md",
+      "head < src/index.ts",
+      "wc -l < src/index.ts",
+    ];
+
+    for (const cmd of allowed) {
+      it(`allows: ${cmd}`, async () => {
+        const result = await run(bash(cmd));
+        expect(result.verdict).toBe(ALLOW);
+      });
+    }
+  });
+
   describe("rejects bare commands when cwd is outside project", () => {
     it("rejects cat with no args in /tmp", async () => {
-      const result = await allowSafeReadCommands.handler(bash("cat", "/tmp"));
+      const result = await run(bash("cat", "/tmp"));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("rejects wc -l with no file in /tmp", async () => {
-      const result = await allowSafeReadCommands.handler(bash("wc -l", "/tmp"));
+      const result = await run(bash("wc -l", "/tmp"));
       expect(result.verdict).toBe(NEXT);
     });
   });
@@ -162,7 +224,7 @@ describe("allow-safe-read-commands", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowSafeReadCommands.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -177,14 +239,14 @@ describe("allow-safe-read-commands", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${JSON.stringify(cmd)}`, async () => {
-        const result = await allowSafeReadCommands.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
   });
 
   it("passes through when no project root", async () => {
-    const result = await allowSafeReadCommands.handler(bash("cat README.md", PROJECT, null));
+    const result = await run(bash("cat README.md", PROJECT, null));
     expect(result.verdict).toBe(NEXT);
   });
 
@@ -194,12 +256,12 @@ describe("allow-safe-read-commands", () => {
       args: { file_path: "/foo" },
       context: { cwd: PROJECT, env: {}, projectRoot: PROJECT },
     };
-    const result = await allowSafeReadCommands.handler(call);
+    const result = await run(call);
     expect(result.verdict).toBe(NEXT);
   });
 
   it("passes through non-safe commands", async () => {
-    const result = await allowSafeReadCommands.handler(bash("rm -rf src"));
+    const result = await run(bash("rm -rf src"));
     expect(result.verdict).toBe(NEXT);
   });
 });

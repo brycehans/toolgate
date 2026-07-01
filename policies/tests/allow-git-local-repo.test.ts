@@ -1,5 +1,5 @@
 import { describe, expect, it, mock, beforeEach } from "bun:test";
-import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 
 // Mock Bun.spawn to simulate `git remote` output
 let spawnOutput = "";
@@ -17,7 +17,7 @@ describe("allow-git-local-repo", () => {
   // We need to re-import the module for each describe block to reset the cache.
   // Instead, we'll test with different projectRoots to avoid cache hits.
 
-  let allowGitLocalRepo: typeof import("../allow-git-local-repo").default;
+  let run: ReturnType<typeof adaptHandler>;
   let callCount = 0;
 
   beforeEach(async () => {
@@ -26,7 +26,8 @@ describe("allow-git-local-repo", () => {
     const modulePath = require.resolve("../allow-git-local-repo");
     delete require.cache[modulePath];
     const mod = await import("../allow-git-local-repo");
-    allowGitLocalRepo = mod.default;
+    const allowGitLocalRepo = mod.default;
+    run = adaptHandler(allowGitLocalRepo.action!, allowGitLocalRepo.handler as any);
 
     // Default: simulate local repo (no remotes)
     spawnOutput = "";
@@ -70,7 +71,7 @@ describe("allow-git-local-repo", () => {
     for (const cmd of allowed) {
       it(`allows: ${cmd}`, async () => {
         const root = `/tmp/local-${callCount++}`;
-        const result = await allowGitLocalRepo.handler(bash(cmd, root));
+        const result = await run(bash(cmd, root));
         expect(result.verdict).toBe(ALLOW);
       });
     }
@@ -95,7 +96,7 @@ describe("allow-git-local-repo", () => {
     for (const cmd of blocked) {
       it(`blocks: ${cmd}`, async () => {
         const root = `/tmp/local-blocked-${callCount++}`;
-        const result = await allowGitLocalRepo.handler(bash(cmd, root));
+        const result = await run(bash(cmd, root));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -104,7 +105,7 @@ describe("allow-git-local-repo", () => {
   describe("allows safe restore variants", () => {
     it("allows git restore --staged", async () => {
       const root = `/tmp/local-staged-${callCount++}`;
-      const result = await allowGitLocalRepo.handler(bash("git restore --staged src/file.ts", root));
+      const result = await run(bash("git restore --staged src/file.ts", root));
       expect(result.verdict).toBe(ALLOW);
     });
   });
@@ -113,14 +114,14 @@ describe("allow-git-local-repo", () => {
     it("passes through when repo has origin", async () => {
       spawnOutput = "origin\n";
       const root = `/tmp/remote-${callCount++}`;
-      const result = await allowGitLocalRepo.handler(bash("git commit -m 'test'", root));
+      const result = await run(bash("git commit -m 'test'", root));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("passes through when repo has multiple remotes", async () => {
       spawnOutput = "origin\nupstream\n";
       const root = `/tmp/multi-remote-${callCount++}`;
-      const result = await allowGitLocalRepo.handler(bash("git push", root));
+      const result = await run(bash("git push", root));
       expect(result.verdict).toBe(NEXT);
     });
   });
@@ -132,13 +133,13 @@ describe("allow-git-local-repo", () => {
         args: {},
         context: { cwd: "/tmp", env: {}, projectRoot: "/tmp" },
       };
-      const result = await allowGitLocalRepo.handler(call);
+      const result = await run(call);
       expect(result.verdict).toBe(NEXT);
     });
 
     it("passes through non-git bash commands", async () => {
       const root = `/tmp/local-nongit-${callCount++}`;
-      const result = await allowGitLocalRepo.handler(bash("ls -la", root));
+      const result = await run(bash("ls -la", root));
       expect(result.verdict).toBe(NEXT);
     });
   });
@@ -150,7 +151,7 @@ describe("allow-git-local-repo", () => {
         args: { command: "git status" },
         context: { cwd: "/tmp", env: {}, projectRoot: null as any },
       };
-      const result = await allowGitLocalRepo.handler(call);
+      const result = await run(call);
       expect(result.verdict).toBe(NEXT);
     });
   });

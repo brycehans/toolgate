@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { DENY, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, DENY, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import denyGitAddAndCommit from "../deny-git-add-and-commit";
+
+const run = adaptHandler(denyGitAddAndCommit.action!, denyGitAddAndCommit.handler as any);
 
 function bash(command: string): ToolCall {
   return {
@@ -23,7 +25,7 @@ describe("deny-git-add-and-commit", () => {
 
     for (const cmd of denied) {
       it(`denies: ${JSON.stringify(cmd)}`, async () => {
-        const result = await denyGitAddAndCommit.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(DENY);
       });
     }
@@ -38,7 +40,7 @@ describe("deny-git-add-and-commit", () => {
 
     for (const cmd of allowed) {
       it(`passes through: ${cmd}`, async () => {
-        const result = await denyGitAddAndCommit.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -52,7 +54,7 @@ describe("deny-git-add-and-commit", () => {
 
     for (const cmd of allowed) {
       it(`passes through: ${cmd}`, async () => {
-        const result = await denyGitAddAndCommit.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -70,7 +72,7 @@ describe("deny-git-add-and-commit", () => {
 
     for (const cmd of denied) {
       it(`denies: ${JSON.stringify(cmd)}`, async () => {
-        const result = await denyGitAddAndCommit.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(DENY);
       });
     }
@@ -85,7 +87,7 @@ describe("deny-git-add-and-commit", () => {
 
     for (const cmd of allowed) {
       it(`passes through: ${cmd}`, async () => {
-        const result = await denyGitAddAndCommit.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -97,7 +99,7 @@ describe("deny-git-add-and-commit", () => {
       args: {},
       context: { cwd: "/tmp", env: {}, projectRoot: null },
     };
-    const result = await denyGitAddAndCommit.handler(call);
+    const result = await run(call);
     expect(result.verdict).toBe(NEXT);
   });
 });

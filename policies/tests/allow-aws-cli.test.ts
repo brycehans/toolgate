@@ -1,8 +1,10 @@
 import { describe, expect, it } from "bun:test";
-import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowAwsCli, { createAwsCliPolicy } from "../allow-aws-cli";
 
 const PROJECT = "/home/user/project";
+
+const run = adaptHandler(allowAwsCli.action!, allowAwsCli.handler as any);
 
 function bash(command: string): ToolCall {
   return {
@@ -32,7 +34,7 @@ describe("allow-aws-cli", () => {
 
     for (const cmd of allowed) {
       it(`allows: ${cmd}`, async () => {
-        const result = await allowAwsCli.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(ALLOW);
       });
     }
@@ -60,7 +62,7 @@ describe("allow-aws-cli", () => {
 
     for (const cmd of requireApproval) {
       it(`requires approval: ${cmd}`, async () => {
-        const result = await allowAwsCli.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -78,7 +80,7 @@ describe("allow-aws-cli", () => {
 
     for (const cmd of requireApproval) {
       it(`requires approval: ${cmd}`, async () => {
-        const result = await allowAwsCli.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -93,7 +95,7 @@ describe("allow-aws-cli", () => {
 
     for (const cmd of fallThrough) {
       it(`falls through: ${cmd}`, async () => {
-        const result = await allowAwsCli.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -106,29 +108,29 @@ describe("allow-aws-cli", () => {
         args: { file_path: "/foo" },
         context: { cwd: PROJECT, env: {}, projectRoot: PROJECT },
       };
-      const result = await allowAwsCli.handler(call);
+      const result = await run(call);
       expect(result.verdict).toBe(NEXT);
     });
 
     it("ignores non-aws bash commands", async () => {
-      const result = await allowAwsCli.handler(bash("git status"));
+      const result = await run(bash("git status"));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("ignores compound commands", async () => {
-      const result = await allowAwsCli.handler(bash("aws s3 ls && aws s3 rm s3://bucket/key"));
+      const result = await run(bash("aws s3 ls && aws s3 rm s3://bucket/key"));
       expect(result.verdict).toBe(NEXT);
     });
   });
 
   describe("case-insensitive profile matching", () => {
     it("matches readonly case-insensitively", async () => {
-      const result = await allowAwsCli.handler(bash("aws s3 ls --profile ko-readonly"));
+      const result = await run(bash("aws s3 ls --profile ko-readonly"));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("matches admin case-insensitively", async () => {
-      const result = await allowAwsCli.handler(bash("aws s3 ls --profile ko-admin"));
+      const result = await run(bash("aws s3 ls --profile ko-admin"));
       expect(result.verdict).toBe(NEXT);
     });
   });
@@ -141,7 +143,7 @@ describe("allow-aws-cli", () => {
 
     for (const cmd of requireApproval) {
       it(`requires approval: ${cmd}`, async () => {
-        const result = await allowAwsCli.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -155,51 +157,52 @@ describe("createAwsCliPolicy (custom config)", () => {
     restrictedAccountIds: ["111111111111", "222222222222"],
     extraDestructiveSubcommands: ["stop-instances", "reboot-instances"],
   });
+  const runCustom = adaptHandler(custom.action!, custom.handler as any);
 
   describe("uses custom readOnly profiles", () => {
     it("allows SecurityAudit profile", async () => {
-      const result = await custom.handler(bash("aws s3 ls --profile ko-SecurityAudit"));
+      const result = await runCustom(bash("aws s3 ls --profile ko-SecurityAudit"));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows ViewOnly profile", async () => {
-      const result = await custom.handler(bash("aws ec2 describe-instances --profile ViewOnly"));
+      const result = await runCustom(bash("aws ec2 describe-instances --profile ViewOnly"));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("does NOT auto-allow default ReadOnly when overridden", async () => {
-      const result = await custom.handler(bash("aws s3 ls --profile ko-ReadOnly"));
+      const result = await runCustom(bash("aws s3 ls --profile ko-ReadOnly"));
       expect(result.verdict).toBe(NEXT);
     });
   });
 
   describe("uses custom admin profiles", () => {
     it("requires approval for PowerUser", async () => {
-      const result = await custom.handler(bash("aws s3 ls --profile ko-PowerUser"));
+      const result = await runCustom(bash("aws s3 ls --profile ko-PowerUser"));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("requires approval for FullAccess", async () => {
-      const result = await custom.handler(bash("aws s3 ls --profile staging-FullAccess"));
+      const result = await runCustom(bash("aws s3 ls --profile staging-FullAccess"));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("does NOT flag default Admin when overridden", async () => {
-      const result = await custom.handler(bash("aws s3 ls --profile ko-Admin"));
+      const result = await runCustom(bash("aws s3 ls --profile ko-Admin"));
       expect(result.verdict).toBe(NEXT);
     });
   });
 
   describe("requires approval for restricted account IDs", () => {
     it("requires approval for custom account ID", async () => {
-      const result = await custom.handler(
+      const result = await runCustom(
         bash("aws sts assume-role --role-arn arn:aws:iam::111111111111:role/Role --profile ko-SecurityAudit"),
       );
       expect(result.verdict).toBe(NEXT);
     });
 
     it("does not restrict when no account ID mentioned", async () => {
-      const result = await custom.handler(
+      const result = await runCustom(
         bash("aws s3 ls --profile ko-SecurityAudit"),
       );
       expect(result.verdict).toBe(ALLOW);
@@ -208,21 +211,21 @@ describe("createAwsCliPolicy (custom config)", () => {
 
   describe("uses extra destructive subcommands", () => {
     it("requires approval for stop-instances", async () => {
-      const result = await custom.handler(
+      const result = await runCustom(
         bash("aws ec2 stop-instances --instance-ids i-123 --profile ko-SecurityAudit"),
       );
       expect(result.verdict).toBe(NEXT);
     });
 
     it("requires approval for reboot-instances", async () => {
-      const result = await custom.handler(
+      const result = await runCustom(
         bash("aws ec2 reboot-instances --instance-ids i-123"),
       );
       expect(result.verdict).toBe(NEXT);
     });
 
     it("still catches built-in destructive commands", async () => {
-      const result = await custom.handler(
+      const result = await runCustom(
         bash("aws s3 rm s3://bucket/key --profile ko-SecurityAudit"),
       );
       expect(result.verdict).toBe(NEXT);

@@ -1,4 +1,4 @@
-import { deny, next, type Policy } from "../src";
+import type { Policy } from "../src";
 import { parseShell, Op } from "./parse-bash-ast";
 
 /**
@@ -11,14 +11,15 @@ const denyGitChained: Policy = {
   name: "Deny git chained with other commands",
   description:
     "Rejects git && ..., git; ..., or git || ... chains — run each git command separately",
+  action: "deny",
   handler: async (call) => {
-    if (call.tool !== "Bash") return next();
+    if (call.tool !== "Bash") return;
     const cmd = call.args.command;
-    if (typeof cmd !== "string") return next();
-    if (!cmd.includes("git")) return next();
+    if (typeof cmd !== "string") return;
+    if (!cmd.includes("git")) return;
 
     const ast = await parseShell(cmd);
-    if (!ast) return next();
+    if (!ast) return;
 
     // Multiple statements means ; chaining
     if (ast.Stmts.length > 1) {
@@ -28,22 +29,16 @@ const denyGitChained: Policy = {
         return firstArg?.Type === "Lit" && firstArg.Value === "git";
       });
       if (hasGit) {
-        return deny(
-          "Don't chain git commands. Run each git command as its own Bash call for independent policy evaluation and error handling.",
-        );
+        return "Don't chain git commands. Run each git command as its own Bash call for independent policy evaluation and error handling.";
       }
     }
 
     // Single statement with BinaryCmd (&&, ||)
     if (ast.Stmts.length === 1 && ast.Stmts[0].Cmd?.Type === "BinaryCmd") {
       if (containsGitBinary(ast.Stmts[0].Cmd)) {
-        return deny(
-          "Don't chain git commands. Run each git command as its own Bash call for independent policy evaluation and error handling.",
-        );
+        return "Don't chain git commands. Run each git command as its own Bash call for independent policy evaluation and error handling.";
       }
     }
-
-    return next();
   },
 };
 

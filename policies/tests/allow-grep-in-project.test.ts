@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowGrepInProject from "../allow-grep-in-project";
+
+const run = adaptHandler(allowGrepInProject.action!, allowGrepInProject.handler as any);
 
 const PROJECT = "/home/user/project";
 
@@ -17,61 +19,61 @@ function grep(path: string | undefined, projectRoot: string | null = PROJECT): T
 describe("allow-grep-in-project", () => {
   describe("allows grep within project", () => {
     it("allows explicit path in project", async () => {
-      const result = await allowGrepInProject.handler(grep("/home/user/project/src"));
+      const result = await run(grep("/home/user/project/src"));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows project root as path", async () => {
-      const result = await allowGrepInProject.handler(grep("/home/user/project"));
+      const result = await run(grep("/home/user/project"));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows nested path", async () => {
-      const result = await allowGrepInProject.handler(grep("/home/user/project/a/b/c"));
+      const result = await run(grep("/home/user/project/a/b/c"));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows when no path specified (defaults to cwd)", async () => {
-      const result = await allowGrepInProject.handler(grep(undefined));
+      const result = await run(grep(undefined));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows relative path within project", async () => {
-      const result = await allowGrepInProject.handler(grep("src/utils"));
+      const result = await run(grep("src/utils"));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows relative path with dot prefix", async () => {
-      const result = await allowGrepInProject.handler(grep("./toolgate/policies"));
+      const result = await run(grep("./toolgate/policies"));
       expect(result.verdict).toBe(ALLOW);
     });
   });
 
   describe("rejects grep outside project", () => {
     it("rejects path outside project", async () => {
-      const result = await allowGrepInProject.handler(grep("/etc"));
+      const result = await run(grep("/etc"));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("rejects sibling directory", async () => {
-      const result = await allowGrepInProject.handler(grep("/home/user/other-project"));
+      const result = await run(grep("/home/user/other-project"));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("rejects prefix trick", async () => {
-      const result = await allowGrepInProject.handler(grep("/home/user/project-evil/src"));
+      const result = await run(grep("/home/user/project-evil/src"));
       expect(result.verdict).toBe(NEXT);
     });
   });
 
   describe("passes through when no project root", () => {
     it("with explicit path", async () => {
-      const result = await allowGrepInProject.handler(grep("/home/user/project/src", null));
+      const result = await run(grep("/home/user/project/src", null));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("with no path", async () => {
-      const result = await allowGrepInProject.handler(grep(undefined, null));
+      const result = await run(grep(undefined, null));
       expect(result.verdict).toBe(NEXT);
     });
   });
@@ -83,7 +85,7 @@ describe("allow-grep-in-project", () => {
         args: { pattern: "foo" },
         context: { cwd: "/tmp", env: {}, projectRoot: PROJECT },
       };
-      const result = await allowGrepInProject.handler(call);
+      const result = await run(call);
       expect(result.verdict).toBe(NEXT);
     });
   });
@@ -95,7 +97,7 @@ describe("allow-grep-in-project", () => {
         args: { pattern: "foo", path: "/shared/lib/utils.ts" },
         context: { cwd: PROJECT, env: {}, projectRoot: PROJECT, additionalDirs: ["/shared/lib"] },
       };
-      const result = await allowGrepInProject.handler(call);
+      const result = await run(call);
       expect(result.verdict).toBe(ALLOW);
     });
 
@@ -105,7 +107,7 @@ describe("allow-grep-in-project", () => {
         args: { pattern: "foo", path: "/shared/lib" },
         context: { cwd: PROJECT, env: {}, projectRoot: PROJECT, additionalDirs: ["/shared/lib"] },
       };
-      const result = await allowGrepInProject.handler(call);
+      const result = await run(call);
       expect(result.verdict).toBe(ALLOW);
     });
 
@@ -115,7 +117,7 @@ describe("allow-grep-in-project", () => {
         args: { pattern: "foo", path: "/secret/data" },
         context: { cwd: PROJECT, env: {}, projectRoot: PROJECT, additionalDirs: ["/shared/lib"] },
       };
-      const result = await allowGrepInProject.handler(call);
+      const result = await run(call);
       expect(result.verdict).toBe(NEXT);
     });
 
@@ -125,7 +127,7 @@ describe("allow-grep-in-project", () => {
         args: { pattern: "foo" },
         context: { cwd: "/shared/lib/src", env: {}, projectRoot: PROJECT, additionalDirs: ["/shared/lib"] },
       };
-      const result = await allowGrepInProject.handler(call);
+      const result = await run(call);
       expect(result.verdict).toBe(ALLOW);
     });
   });
@@ -136,7 +138,7 @@ describe("allow-grep-in-project", () => {
       args: { command: "grep foo" },
       context: { cwd: PROJECT, env: {}, projectRoot: PROJECT },
     };
-    const result = await allowGrepInProject.handler(call);
+    const result = await run(call);
     expect(result.verdict).toBe(NEXT);
   });
 });

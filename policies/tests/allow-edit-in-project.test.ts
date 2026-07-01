@@ -1,7 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import { homedir } from "os";
-import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowEditInProject from "../allow-edit-in-project";
+
+const run = adaptHandler(allowEditInProject.action!, allowEditInProject.handler as any);
 
 const PROJECT = "/home/user/project";
 const HOME_PROJECT = `${homedir()}/myproject`;
@@ -25,7 +27,7 @@ describe("allow-edit-in-project", () => {
 
       for (const path of allowed) {
         it(`allows: ${path}`, async () => {
-          const result = await allowEditInProject.handler(tool(toolName, path));
+          const result = await run(tool(toolName, path));
           expect(result.verdict).toBe(ALLOW);
         });
       }
@@ -41,7 +43,7 @@ describe("allow-edit-in-project", () => {
 
       for (const path of outside) {
         it(`next: ${path}`, async () => {
-          const result = await allowEditInProject.handler(tool(toolName, path));
+          const result = await run(tool(toolName, path));
           expect(result.verdict).toBe(NEXT);
         });
       }
@@ -70,7 +72,7 @@ describe("allow-edit-in-project", () => {
 
     for (const path of sensitive) {
       it(`next: ${path}`, async () => {
-        const result = await allowEditInProject.handler(tool("Edit", path));
+        const result = await run(tool("Edit", path));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -78,28 +80,28 @@ describe("allow-edit-in-project", () => {
 
   describe("resolves tilde paths", () => {
     it("allows ~/project/file.ts when projectRoot matches", async () => {
-      const result = await allowEditInProject.handler(tool("Edit", "~/myproject/src/index.ts", HOME_PROJECT));
+      const result = await run(tool("Edit", "~/myproject/src/index.ts", HOME_PROJECT));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("next for ~/project/file.ts when projectRoot differs", async () => {
-      const result = await allowEditInProject.handler(tool("Edit", "~/other/file.ts", HOME_PROJECT));
+      const result = await run(tool("Edit", "~/other/file.ts", HOME_PROJECT));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("next for tilde path to sensitive file", async () => {
-      const result = await allowEditInProject.handler(tool("Edit", "~/myproject/.env", HOME_PROJECT));
+      const result = await run(tool("Edit", "~/myproject/.env", HOME_PROJECT));
       expect(result.verdict).toBe(NEXT);
     });
   });
 
   it("passes through non-Edit/Write tools", async () => {
-    const result = await allowEditInProject.handler(tool("Bash", `${PROJECT}/file.ts`));
+    const result = await run(tool("Bash", `${PROJECT}/file.ts`));
     expect(result.verdict).toBe(NEXT);
   });
 
   it("passes through when no project root", async () => {
-    const result = await allowEditInProject.handler(tool("Edit", `${PROJECT}/file.ts`, null));
+    const result = await run(tool("Edit", `${PROJECT}/file.ts`, null));
     expect(result.verdict).toBe(NEXT);
   });
 });

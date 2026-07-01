@@ -1,4 +1,4 @@
-import { deny, next, type Policy } from "../src";
+import type { Policy } from "../src";
 import { parseShell, getPipelineCommands, getArgs } from "./parse-bash-ast";
 
 const JSON_DESCRIPTION_PATTERNS = [
@@ -44,8 +44,8 @@ function isPythonJsonTool(cmds: ReturnType<typeof getPipelineCommands>): boolean
 }
 
 const DENY_MESSAGE =
-  "Use `fx` for JSON extraction (`| fx '.field.subfield'`), " +
-  "`gron` for path discovery (`| gron | grep key`), " +
+  "Use `fx` for JSON extraction (save to `tmp/file.json` first, then `fx '<filter>' < tmp/file.json` — piping into fx is denied to avoid wasting the LHS), " +
+  "`gron` for path discovery (`gron tmp/file.json | grep key`), " +
   "or the Read tool to inspect JSON files directly. " +
   "Only use Python for complex transforms that genuinely need it (atomic file writes, multi-step logic with non-JSON inputs).";
 
@@ -53,21 +53,22 @@ const redirectPythonJsonToFx: Policy = {
   name: "Redirect python JSON to fx",
   description:
     "Blocks python3 -m json.tool (always) and python3 commands whose description suggests JSON processing — suggests fx/gron instead",
+  action: "deny",
   handler: async (call) => {
-    if (call.tool !== "Bash") return next();
-    if (typeof call.args.command !== "string") return next();
+    if (call.tool !== "Bash") return;
+    if (typeof call.args.command !== "string") return;
 
     const ast = await parseShell(call.args.command);
-    if (!ast || ast.Stmts.length !== 1) return next();
+    if (!ast || ast.Stmts.length !== 1) return;
 
     const cmds = getPipelineCommands(ast.Stmts[0]);
-    if (!cmds) return next();
+    if (!cmds) return;
 
     // Hard block: python3 -m json.tool is always just pretty-printing
     if (isPythonJsonTool(cmds)) {
-      return deny(
+      return (
         "`python3 -m json.tool` is just pretty-printing. Use `| fx .` instead, or `| fx` for interactive browsing. " +
-          DENY_MESSAGE,
+        DENY_MESSAGE
       );
     }
 
@@ -75,11 +76,9 @@ const redirectPythonJsonToFx: Policy = {
     if (commandContainsPython(cmds)) {
       const description = call.args.description;
       if (typeof description === "string" && descriptionSuggestsJsonProcessing(description)) {
-        return deny(DENY_MESSAGE);
+        return DENY_MESSAGE;
       }
     }
-
-    return next();
   },
 };
 export default redirectPythonJsonToFx;

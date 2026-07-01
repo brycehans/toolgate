@@ -1,4 +1,4 @@
-import { allow, next, type Policy } from "../src";
+import type { Policy } from "../src";
 
 /**
  * Allow all Agent (subagent) tool calls unconditionally.
@@ -6,12 +6,13 @@ import { allow, next, type Policy } from "../src";
 const allowAgent: Policy = {
   name: "Allow agent",
   description: "Permits all Agent subagent invocations",
+  action: "allow",
   handler: async (call) => {
     if (call.tool !== "Agent") {
-      return next();
+      return;
     }
 
-    return allow();
+    return true;
   },
 };
 export default allowAgent;

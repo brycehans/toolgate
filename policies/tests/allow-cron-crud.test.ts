@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowCronCrud from "../allow-cron-crud";
+
+const run = adaptHandler(allowCronCrud.action!, allowCronCrud.handler as any);
 
 const PROJECT = "/home/user/project";
 
@@ -13,18 +15,18 @@ const makeCall = (tool: string, args: Record<string, unknown> = {}): ToolCall =>
 describe("allow-cron-crud", () => {
   for (const tool of ["CronCreate", "CronDelete", "CronList"]) {
     it(`allows ${tool}`, async () => {
-      const result = await allowCronCrud.handler(makeCall(tool));
+      const result = await run(makeCall(tool));
       expect(result.verdict).toBe(ALLOW);
     });
   }
 
   it("passes through non-Cron tools", async () => {
-    const result = await allowCronCrud.handler(makeCall("Bash", { command: "echo hello" }));
+    const result = await run(makeCall("Bash", { command: "echo hello" }));
     expect(result.verdict).toBe(NEXT);
   });
 
   it("passes through other tools", async () => {
-    const result = await allowCronCrud.handler(makeCall("Read", { file_path: "/foo" }));
+    const result = await run(makeCall("Read", { file_path: "/foo" }));
     expect(result.verdict).toBe(NEXT);
   });
 });

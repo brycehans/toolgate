@@ -1,4 +1,4 @@
-import { allow, next, type Policy } from "../src";
+import type { Policy } from "../src";
 
 function isSuperpowers(value: unknown): boolean {
   return (
@@ -11,16 +11,17 @@ const allowSuperpowersSkills: Policy = {
   name: "Allow superpowers skills",
   description:
     "Permits Skill and Agent tool calls for any superpowers:* skill or subagent type",
+  action: "allow",
   handler: async (call) => {
     if (call.tool === "Skill" && isSuperpowers(call.args.skill)) {
-      return allow();
+      return true;
     }
 
     if (call.tool === "Agent" && isSuperpowers(call.args.subagent_type)) {
-      return allow();
+      return true;
     }
 
-    return next();
+    return;
   },
 };
 

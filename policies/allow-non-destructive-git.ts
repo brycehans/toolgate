@@ -1,4 +1,4 @@
-import { allow, next, type Policy } from "../src";
+import type { Policy } from "../src";
 import { safeBashCommandOrPipeline } from "./parse-bash-ast";
 
 /**
@@ -54,20 +54,21 @@ const allowNonDestructiveGit: Policy = {
   name: "Allow non-destructive git",
   description:
     "Auto-approves git commands that don't mutate remote state or discard uncommitted work",
+  action: "allow",
   handler: async (call) => {
     const tokens = await safeBashCommandOrPipeline(call);
-    if (!tokens) return next();
-    if (tokens[0] !== "git") return next();
+    if (!tokens) return;
+    if (tokens[0] !== "git") return;
 
     const sub = tokens[1];
-    if (!sub) return next();
+    if (!sub) return;
 
-    if (DESTRUCTIVE_GIT.has(sub)) return next();
+    if (DESTRUCTIVE_GIT.has(sub)) return;
 
     const rest = tokens.slice(2);
-    if (hasDestructiveFlags(sub, rest)) return next();
+    if (hasDestructiveFlags(sub, rest)) return;
 
-    return allow();
+    return true;
   },
 };
 export default allowNonDestructiveGit;

@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { allow, next, type Policy } from "../src";
+import type { Policy } from "../src";
 import { parseShell, getPipelineCommands, getArgs, isSafeFilter } from "./parse-bash-ast";
 
 const GREP_COMMANDS = new Set(["grep", "egrep", "fgrep", "rg"]);
@@ -7,24 +7,42 @@ const GREP_COMMANDS = new Set(["grep", "egrep", "fgrep", "rg"]);
 const allowBashGrepInProject: Policy = {
   name: "Allow bash grep in project",
   description: "Permits grep/egrep/fgrep/rg commands when all paths are within the project root",
+  action: "allow",
   handler: async (call) => {
-    if (call.tool !== "Bash") return next();
-    if (typeof call.args.command !== "string") return next();
-    if (!call.context.projectRoot) return next();
+    if (call.tool !== "Bash") return;
+    if (typeof call.args.command !== "string") return;
+    if (!call.context.projectRoot) return;
 
     const ast = await parseShell(call.args.command);
-    if (!ast || ast.Stmts.length !== 1) return next();
+    if (!ast || ast.Stmts.length !== 1) return;
 
     const cmds = getPipelineCommands(ast.Stmts[0]);
-    if (!cmds || cmds.length === 0) return next();
+    if (!cmds || cmds.length === 0) return;
 
     const tokens = getArgs(cmds[0]);
-    if (!tokens || !GREP_COMMANDS.has(tokens[0])) return next();
+    if (!tokens || !GREP_COMMANDS.has(tokens[0])) return;
+
+    // For rg specifically, reject flags that execute commands or read arbitrary files
+    if (tokens[0] === "rg") {
+      const blockedExact = [
+        "--pre", "--preprocessor", "--pre-glob", "--hostname-bin",
+        "-z", "--search-zip",
+        "-f", "--file", "--ignore-file",
+      ];
+      const blockedPrefix = [
+        "--pre=", "--preprocessor=", "--pre-glob=", "--hostname-bin=",
+        "--file=", "--ignore-file=",
+      ];
+      for (const t of tokens.slice(1)) {
+        if (blockedExact.includes(t)) return;
+        if (blockedPrefix.some((p) => t.startsWith(p))) return;
+      }
+    }
 
     // All subsequent pipeline segments must be safe filters
     for (let i = 1; i < cmds.length; i++) {
       const segArgs = getArgs(cmds[i]);
-      if (!segArgs || !isSafeFilter(segArgs)) return next();
+      if (!segArgs || !isSafeFilter(segArgs)) return;
     }
 
     const root = call.context.projectRoot;
@@ -35,9 +53,9 @@ const allowBashGrepInProject: Policy = {
     // With no path args, grep reads stdin or cwd — allow if cwd is in project
     if (nonFlags.length === 0) {
       if (call.context.cwd.startsWith(root + "/") || call.context.cwd === root) {
-        return allow();
+        return true;
       }
-      return next();
+      return;
     }
 
     // First non-flag is the pattern; rest are file/dir paths
@@ -46,9 +64,9 @@ const allowBashGrepInProject: Policy = {
     // No explicit paths — defaults to cwd
     if (paths.length === 0) {
       if (call.context.cwd.startsWith(root + "/") || call.context.cwd === root) {
-        return allow();
+        return true;
       }
-      return next();
+      return;
     }
 
     const allInProject = paths.every((p) => {
@@ -56,7 +74,7 @@ const allowBashGrepInProject: Policy = {
       return resolved === root || resolved.startsWith(root + "/");
     });
 
-    return allInProject ? allow() : next();
+    return allInProject ? true : undefined;
   },
 };
 export default allowBashGrepInProject;

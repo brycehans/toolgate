@@ -1,4 +1,4 @@
-import { allow, next, type Policy } from "../src";
+import type { Policy } from "../src";
 import { safeBashCommand } from "./parse-bash-ast";
 
 /** Cache remote check results per projectRoot for the process lifetime. */
@@ -63,19 +63,20 @@ const allowGitLocalRepo: Policy = {
   name: "Allow git in local repos",
   description:
     "Auto-approves git operations in repos with no configured remotes, except commands that discard uncommitted work",
+  action: "allow",
   handler: async (call) => {
     const tokens = await safeBashCommand(call);
-    if (!tokens) return next();
-    if (tokens[0] !== "git") return next();
+    if (!tokens) return;
+    if (tokens[0] !== "git") return;
 
     const projectRoot = call.context.projectRoot;
-    if (!projectRoot) return next();
+    if (!projectRoot) return;
 
-    if (!(await isLocalRepo(projectRoot))) return next();
+    if (!(await isLocalRepo(projectRoot))) return;
 
-    if (isDestructiveGit(tokens)) return next();
+    if (isDestructiveGit(tokens)) return;
 
-    return allow();
+    return true;
   },
 };
 export default allowGitLocalRepo;

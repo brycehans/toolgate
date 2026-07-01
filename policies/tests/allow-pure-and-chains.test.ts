@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowPureAndChains from "../allow-pure-and-chains";
+
+const run = adaptHandler(allowPureAndChains.action!, allowPureAndChains.handler as any);
 
 const PROJECT = "/home/user/project";
 
@@ -34,7 +36,7 @@ describe("allow-pure-and-chains", () => {
 
     for (const cmd of allowed) {
       it(`allows: ${cmd}`, async () => {
-        const result = await allowPureAndChains.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(ALLOW);
       });
     }
@@ -48,7 +50,7 @@ describe("allow-pure-and-chains", () => {
 
     for (const cmd of allowed) {
       it(`allows: ${cmd}`, async () => {
-        const result = await allowPureAndChains.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(ALLOW);
       });
     }
@@ -78,7 +80,7 @@ describe("allow-pure-and-chains", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowPureAndChains.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -106,7 +108,7 @@ describe("allow-pure-and-chains", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${JSON.stringify(cmd)}`, async () => {
-        const result = await allowPureAndChains.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -118,12 +120,12 @@ describe("allow-pure-and-chains", () => {
       args: { file_path: "/foo" },
       context: { cwd: PROJECT, env: {}, projectRoot: PROJECT },
     };
-    const result = await allowPureAndChains.handler(call);
+    const result = await run(call);
     expect(result.verdict).toBe(NEXT);
   });
 
   it("passes through single impure command", async () => {
-    const result = await allowPureAndChains.handler(bash("rm -rf /"));
+    const result = await run(bash("rm -rf /"));
     expect(result.verdict).toBe(NEXT);
   });
 });

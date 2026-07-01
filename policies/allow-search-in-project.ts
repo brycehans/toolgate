@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { allow, next, isWithinProject, type Policy } from "../src";
+import { isWithinProject, type Policy } from "../src";
 
 /**
  * Allow Search/Glob tool calls when the search path is within the project root.
@@ -8,29 +8,30 @@ import { allow, next, isWithinProject, type Policy } from "../src";
 const allowSearchInProject: Policy = {
   name: "Allow search in project",
   description: "Permits Search and Glob tool calls targeting paths within the project root",
+  action: "allow",
   handler: async (call) => {
     if (call.tool !== "Search" && call.tool !== "Glob") {
-      return next();
+      return;
     }
 
     if (!call.context.projectRoot) {
-      return next();
+      return;
     }
 
     const searchPath = call.args.path;
 
     // No path specified — Search defaults to cwd
     if (searchPath === undefined) {
-      return isWithinProject(call.context.cwd, call.context) ? allow() : next();
+      return isWithinProject(call.context.cwd, call.context) ? true : undefined;
     }
 
     if (typeof searchPath !== "string") {
-      return next();
+      return;
     }
 
     // Resolve relative paths against cwd
     const resolved = resolve(call.context.cwd, searchPath);
-    return isWithinProject(resolved, call.context) ? allow() : next();
+    return isWithinProject(resolved, call.context) ? true : undefined;
   },
 };
 export default allowSearchInProject;

@@ -1,4 +1,4 @@
-import { allow, next, type Policy } from "../src";
+import type { Policy } from "../src";
 
 /**
  * Allow all AskUserQuestion tool calls unconditionally.
@@ -8,9 +8,10 @@ import { allow, next, type Policy } from "../src";
 const allowAskUser: Policy = {
   name: "Allow AskUserQuestion",
   description: "Permits all AskUserQuestion tool calls",
+  action: "allow",
   handler: async (call) => {
-    if (call.tool !== "AskUserQuestion") return next();
-    return allow();
+    if (call.tool !== "AskUserQuestion") return;
+    return true;
   },
 };
 export default allowAskUser;

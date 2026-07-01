@@ -1,4 +1,4 @@
-import { allow, next, type Policy } from "../src";
+import type { Policy } from "../src";
 
 const TASK_TOOLS = new Set([
   "TaskCreate",
@@ -17,12 +17,13 @@ const allowTaskCrud: Policy = {
   name: "Allow Task CRUD",
   description:
     "Permits TaskCreate, TaskUpdate, TaskGet, TaskList, TaskOutput, and TaskStop tool calls",
+  action: "allow",
   handler: async (call) => {
     if (!TASK_TOOLS.has(call.tool)) {
-      return next();
+      return;
     }
 
-    return allow();
+    return true;
   },
 };
 export default allowTaskCrud;

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowSearchInProject from "../allow-search-in-project";
+
+const run = adaptHandler(allowSearchInProject.action!, allowSearchInProject.handler as any);
 
 const PROJECT = "/home/user/project";
 
@@ -17,61 +19,61 @@ function search(path: string | undefined, projectRoot: string | null = PROJECT):
 describe("allow-search-in-project", () => {
   describe("allows search within project", () => {
     it("allows explicit path in project", async () => {
-      const result = await allowSearchInProject.handler(search("/home/user/project/src"));
+      const result = await run(search("/home/user/project/src"));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows project root as path", async () => {
-      const result = await allowSearchInProject.handler(search("/home/user/project"));
+      const result = await run(search("/home/user/project"));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows nested path", async () => {
-      const result = await allowSearchInProject.handler(search("/home/user/project/a/b/c"));
+      const result = await run(search("/home/user/project/a/b/c"));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows when no path specified (defaults to cwd)", async () => {
-      const result = await allowSearchInProject.handler(search(undefined));
+      const result = await run(search(undefined));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows relative path within project", async () => {
-      const result = await allowSearchInProject.handler(search("src/utils"));
+      const result = await run(search("src/utils"));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows relative path with dot prefix", async () => {
-      const result = await allowSearchInProject.handler(search("./toolgate/policies"));
+      const result = await run(search("./toolgate/policies"));
       expect(result.verdict).toBe(ALLOW);
     });
   });
 
   describe("rejects search outside project", () => {
     it("rejects path outside project", async () => {
-      const result = await allowSearchInProject.handler(search("/etc"));
+      const result = await run(search("/etc"));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("rejects sibling directory", async () => {
-      const result = await allowSearchInProject.handler(search("/home/user/other-project"));
+      const result = await run(search("/home/user/other-project"));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("rejects prefix trick", async () => {
-      const result = await allowSearchInProject.handler(search("/home/user/project-evil/src"));
+      const result = await run(search("/home/user/project-evil/src"));
       expect(result.verdict).toBe(NEXT);
     });
   });
 
   describe("passes through when no project root", () => {
     it("with explicit path", async () => {
-      const result = await allowSearchInProject.handler(search("/home/user/project/src", null));
+      const result = await run(search("/home/user/project/src", null));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("with no path", async () => {
-      const result = await allowSearchInProject.handler(search(undefined, null));
+      const result = await run(search(undefined, null));
       expect(result.verdict).toBe(NEXT);
     });
   });
@@ -83,7 +85,7 @@ describe("allow-search-in-project", () => {
         args: { query: "foo" },
         context: { cwd: "/tmp", env: {}, projectRoot: PROJECT },
       };
-      const result = await allowSearchInProject.handler(call);
+      const result = await run(call);
       expect(result.verdict).toBe(NEXT);
     });
   });
@@ -94,7 +96,7 @@ describe("allow-search-in-project", () => {
       args: { command: "search foo" },
       context: { cwd: PROJECT, env: {}, projectRoot: PROJECT },
     };
-    const result = await allowSearchInProject.handler(call);
+    const result = await run(call);
     expect(result.verdict).toBe(NEXT);
   });
 
@@ -110,22 +112,22 @@ describe("allow-search-in-project", () => {
     }
 
     it("allows Glob with no path", async () => {
-      const result = await allowSearchInProject.handler(glob(undefined));
+      const result = await run(glob(undefined));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows Glob with absolute path in project", async () => {
-      const result = await allowSearchInProject.handler(glob("/home/user/project/src"));
+      const result = await run(glob("/home/user/project/src"));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows Glob with relative path", async () => {
-      const result = await allowSearchInProject.handler(glob("toolgate/policies"));
+      const result = await run(glob("toolgate/policies"));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("rejects Glob with path outside project", async () => {
-      const result = await allowSearchInProject.handler(glob("/etc"));
+      const result = await run(glob("/etc"));
       expect(result.verdict).toBe(NEXT);
     });
   });

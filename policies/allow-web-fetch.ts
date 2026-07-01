@@ -1,4 +1,4 @@
-import { allow, next, type Policy } from "../src";
+import type { Policy } from "../src";
 
 /**
  * Allow all WebFetch tool calls unconditionally.
@@ -7,9 +7,10 @@ import { allow, next, type Policy } from "../src";
 const allowWebFetch: Policy = {
   name: "Allow WebFetch",
   description: "Permits all WebFetch tool calls",
+  action: "allow",
   handler: async (call) => {
-    if (call.tool !== "WebFetch") return next();
-    return allow();
+    if (call.tool !== "WebFetch") return;
+    return true;
   },
 };
 export default allowWebFetch;

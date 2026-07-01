@@ -1,4 +1,4 @@
-import { allow, next, type Policy } from "../src";
+import type { Policy } from "../src";
 import {
   parseShell,
   hasUnsafeNodes,
@@ -22,25 +22,26 @@ const allowPureAndChains: Policy = {
   name: "Allow pure command chains",
   description:
     "Permits && chains where every segment is a side-effect-free command (php -l, echo, test)",
+  action: "allow",
   handler: async (call) => {
-    if (call.tool !== "Bash") return next();
+    if (call.tool !== "Bash") return;
     const command = call.args?.command;
-    if (typeof command !== "string") return next();
+    if (typeof command !== "string") return;
 
     const file = await parseShell(command);
-    if (!file) return next();
-    if (hasUnsafeNodes(file)) return next();
+    if (!file) return;
+    if (hasUnsafeNodes(file)) return;
 
     const segments = getAndChainSegments(file);
-    if (!segments) return next();
+    if (!segments) return;
 
     for (const segment of segments) {
       const args = getArgs(segment);
-      if (!args) return next();
-      if (!isPureCommand(args)) return next();
+      if (!args) return;
+      if (!isPureCommand(args)) return;
     }
 
-    return allow();
+    return true;
   },
 };
 export default allowPureAndChains;

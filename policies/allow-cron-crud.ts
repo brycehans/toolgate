@@ -1,4 +1,4 @@
-import { allow, next, type Policy } from "../src";
+import type { Policy } from "../src";
 
 const CRON_TOOLS = new Set(["CronCreate", "CronDelete", "CronList"]);
 
@@ -8,12 +8,13 @@ const CRON_TOOLS = new Set(["CronCreate", "CronDelete", "CronList"]);
 const allowCronCrud: Policy = {
   name: "Allow Cron CRUD",
   description: "Permits CronCreate, CronDelete, and CronList tool calls",
+  action: "allow",
   handler: async (call) => {
     if (!CRON_TOOLS.has(call.tool)) {
-      return next();
+      return;
     }
 
-    return allow();
+    return true;
   },
 };
 export default allowCronCrud;

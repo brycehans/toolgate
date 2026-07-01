@@ -1,3 +1,6 @@
 node_modules/
 dist/
 toolgate.config.local.ts
+.DS_Store
+tmp/
+docs/mem-proposals/

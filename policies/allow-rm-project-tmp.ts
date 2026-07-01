@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { allow, next, type Policy } from "../src";
+import type { Policy } from "../src";
 import { safeBashCommand } from "./parse-bash-ast";
 
 /**
@@ -11,28 +11,32 @@ const allowRmProjectTmp: Policy = {
   name: "Allow rm in project tmp/",
   description:
     "Permits rm commands when all targets are within the project's tmp/ directory",
+  action: "allow",
   handler: async (call) => {
     const args = await safeBashCommand(call);
-    if (!args || args[0] !== "rm") return next();
-    if (!call.context.projectRoot) return next();
+    if (!args || args[0] !== "rm") return;
+    if (!call.context.projectRoot) return;
 
     const tmpDirs = [call.context.projectRoot, ...(call.context.additionalDirs ?? [])]
       .map((d) => resolve(d, "tmp"));
     const flags = args.slice(1).filter((t) => t.startsWith("-"));
     const paths = args.slice(1).filter((t) => !t.startsWith("-"));
 
-    if (paths.length === 0) return next();
+    if (paths.length === 0) return;
 
-    // Require approval for -r or -f flags
-    const hasUnsafeFlag = flags.some((f) => /[rf]/.test(f));
-    if (hasUnsafeFlag) return next();
+    // Require approval for recursive (-r/-R/--recursive) deletes; -f/--force is
+    // fine since every target is already constrained to tmp/ below.
+    const hasRecursiveFlag = flags.some((f) =>
+      f.startsWith("--") ? f === "--recursive" : /[rR]/.test(f),
+    );
+    if (hasRecursiveFlag) return;
 
     const allInTmp = paths.every((p) => {
       const resolved = resolve(call.context.cwd, p);
       return tmpDirs.some((tmp) => resolved.startsWith(tmp + "/"));
     });
 
-    return allInTmp ? allow() : next();
+    return allInTmp ? true : undefined;
   },
 };
 export default allowRmProjectTmp;

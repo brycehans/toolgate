@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowRmProjectTmp from "../allow-rm-project-tmp";
+
+const run = adaptHandler(allowRmProjectTmp.action!, allowRmProjectTmp.handler as any);
 
 const PROJECT = "/home/user/project";
 
@@ -22,30 +24,45 @@ describe("allow-rm-project-tmp", () => {
 
     for (const cmd of allowed) {
       it(`allows: ${cmd}`, async () => {
-        const result = await allowRmProjectTmp.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(ALLOW);
       });
     }
   });
 
   it("allows rm with absolute path in project tmp/", async () => {
-    const result = await allowRmProjectTmp.handler(
+    const result = await run(
       bash("rm /home/user/project/tmp/file.txt"),
     );
     expect(result.verdict).toBe(ALLOW);
   });
 
-  describe("requires approval for -r or -f flags in tmp/", () => {
-    const flagged = [
+  describe("allows -f/--force flags in tmp/", () => {
+    const allowed = [
       "rm -f tmp/pr-body.md",
+      "rm -fi tmp/file.txt",
+      "rm --force tmp/file.txt",
+    ];
+
+    for (const cmd of allowed) {
+      it(`allows: ${cmd}`, async () => {
+        const result = await run(bash(cmd));
+        expect(result.verdict).toBe(ALLOW);
+      });
+    }
+  });
+
+  describe("requires approval for recursive flags in tmp/", () => {
+    const flagged = [
       "rm -rf tmp/build-output",
       "rm -r tmp/nested/dir",
-      "rm -fi tmp/file.txt",
+      "rm -R tmp/nested/dir",
+      "rm --recursive tmp/nested/dir",
     ];
 
     for (const cmd of flagged) {
       it(`requires approval: ${cmd}`, async () => {
-        const result = await allowRmProjectTmp.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -63,31 +80,31 @@ describe("allow-rm-project-tmp", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowRmProjectTmp.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
   });
 
   it("rejects rm of the tmp/ directory itself", async () => {
-    const result = await allowRmProjectTmp.handler(bash("rm -rf tmp"));
+    const result = await run(bash("rm -rf tmp"));
     expect(result.verdict).toBe(NEXT);
   });
 
   it("rejects rm with no file arguments", async () => {
-    const result = await allowRmProjectTmp.handler(bash("rm -f"));
+    const result = await run(bash("rm -f"));
     expect(result.verdict).toBe(NEXT);
   });
 
   it("rejects if any path is outside tmp/", async () => {
-    const result = await allowRmProjectTmp.handler(
+    const result = await run(
       bash("rm tmp/ok.txt src/bad.ts"),
     );
     expect(result.verdict).toBe(NEXT);
   });
 
   it("ignores non-rm commands", async () => {
-    const result = await allowRmProjectTmp.handler(bash("ls tmp/"));
+    const result = await run(bash("ls tmp/"));
     expect(result.verdict).toBe(NEXT);
   });
 
@@ -97,7 +114,7 @@ describe("allow-rm-project-tmp", () => {
       args: { file_path: "/tmp/foo" },
       context: { cwd: PROJECT, env: {}, projectRoot: PROJECT },
     };
-    const result = await allowRmProjectTmp.handler(call);
+    const result = await run(call);
     expect(result.verdict).toBe(NEXT);
   });
 });

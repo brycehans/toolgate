@@ -1,7 +1,9 @@
 import { homedir } from "node:os";
 import { describe, expect, it } from "bun:test";
-import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowCdInProject from "../allow-cd-in-project";
+
+const run = adaptHandler(allowCdInProject.action!, allowCdInProject.handler as any);
 
 const HOME = homedir();
 const PROJECT = `${HOME}/Dev/myproject`;
@@ -29,7 +31,7 @@ describe("allow-cd-in-project", () => {
 
     for (const { cmd, desc, cwd } of allowed) {
       it(`allows: ${cmd} (${desc})`, async () => {
-        const result = await allowCdInProject.handler(bash(cmd, cwd));
+        const result = await run(bash(cmd, cwd));
         expect(result.verdict).toBe(ALLOW);
       });
     }
@@ -44,7 +46,7 @@ describe("allow-cd-in-project", () => {
 
     for (const { cmd, desc, cwd } of passThrough) {
       it(`next: ${cmd} (${desc})`, async () => {
-        const result = await allowCdInProject.handler(bash(cmd, cwd));
+        const result = await run(bash(cmd, cwd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -62,17 +64,17 @@ describe("allow-cd-in-project", () => {
     }
 
     it("allows: cd <absolute> to project root", async () => {
-      const result = await allowCdInProject.handler(bashFor(`cd ${OTHER_PROJECT}`, OTHER_PROJECT));
+      const result = await run(bashFor(`cd ${OTHER_PROJECT}`, OTHER_PROJECT));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows: cd ~/Dev/<project> (tilde to project root)", async () => {
-      const result = await allowCdInProject.handler(bashFor("cd ~/Dev/acme-app", OTHER_PROJECT));
+      const result = await run(bashFor("cd ~/Dev/acme-app", OTHER_PROJECT));
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows: cd ~/Dev/<project>/.claude/worktrees/... (tilde to worktree inside project)", async () => {
-      const result = await allowCdInProject.handler(
+      const result = await run(
         bashFor("cd ~/Dev/acme-app/.claude/worktrees/feature-branch", OTHER_PROJECT),
       );
       expect(result.verdict).toBe(ALLOW);
@@ -81,12 +83,12 @@ describe("allow-cd-in-project", () => {
 
   describe("passes through non-cd commands", () => {
     it("next: bare cd (goes home)", async () => {
-      const result = await allowCdInProject.handler(bash("cd"));
+      const result = await run(bash("cd"));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("next: ls command", async () => {
-      const result = await allowCdInProject.handler(bash("ls -la"));
+      const result = await run(bash("ls -la"));
       expect(result.verdict).toBe(NEXT);
     });
 
@@ -96,7 +98,7 @@ describe("allow-cd-in-project", () => {
         args: { file_path: "/foo" },
         context: { cwd: PROJECT, env: {}, projectRoot: PROJECT },
       };
-      const result = await allowCdInProject.handler(call);
+      const result = await run(call);
       expect(result.verdict).toBe(NEXT);
     });
   });

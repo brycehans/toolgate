@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowGitStatus from "../allow-git-status";
+
+const run = adaptHandler(allowGitStatus.action!, allowGitStatus.handler as any);
 
 function bash(command: string): ToolCall {
   return {
@@ -23,7 +25,7 @@ describe("allow-git-status", () => {
 
     for (const cmd of allowed) {
       it(`allows: ${cmd}`, async () => {
-        const result = await allowGitStatus.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(ALLOW);
       });
     }
@@ -38,7 +40,7 @@ describe("allow-git-status", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${JSON.stringify(cmd)}`, async () => {
-        const result = await allowGitStatus.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -53,7 +55,7 @@ describe("allow-git-status", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowGitStatus.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }

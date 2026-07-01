@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowGhReadOnly from "../allow-gh-read-only";
+
+const run = adaptHandler(allowGhReadOnly.action!, allowGhReadOnly.handler as any);
 
 function bash(command: string): ToolCall {
   return {
@@ -34,7 +36,7 @@ describe("allow-gh-read-only", () => {
 
     for (const cmd of allowed) {
       it(`allows: ${cmd}`, async () => {
-        const result = await allowGhReadOnly.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(ALLOW);
       });
     }
@@ -53,7 +55,7 @@ describe("allow-gh-read-only", () => {
 
     for (const cmd of allowed) {
       it(`allows: ${cmd}`, async () => {
-        const result = await allowGhReadOnly.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(ALLOW);
       });
     }
@@ -74,7 +76,7 @@ describe("allow-gh-read-only", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowGhReadOnly.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -92,7 +94,7 @@ describe("allow-gh-read-only", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowGhReadOnly.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -107,14 +109,14 @@ describe("allow-gh-read-only", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${JSON.stringify(cmd)}`, async () => {
-        const result = await allowGhReadOnly.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
   });
 
   it("passes through non-gh commands", async () => {
-    const result = await allowGhReadOnly.handler(bash("ls -la"));
+    const result = await run(bash("ls -la"));
     expect(result.verdict).toBe(NEXT);
   });
 
@@ -124,7 +126,7 @@ describe("allow-gh-read-only", () => {
       args: { file_path: "/tmp/test" },
       context: { cwd: "/home/user/project", env: {}, projectRoot: "/home/user/project" },
     };
-    const result = await allowGhReadOnly.handler(call);
+    const result = await run(call);
     expect(result.verdict).toBe(NEXT);
   });
 });

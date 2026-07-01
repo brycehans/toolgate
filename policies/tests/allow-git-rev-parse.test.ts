@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowGitRevParse from "../allow-git-rev-parse";
+
+const run = adaptHandler(allowGitRevParse.action!, allowGitRevParse.handler as any);
 
 function bash(command: string): ToolCall {
   return {
@@ -24,7 +26,7 @@ describe("allow-git-rev-parse", () => {
 
     for (const cmd of allowed) {
       it(`allows: ${cmd}`, async () => {
-        const result = await allowGitRevParse.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(ALLOW);
       });
     }
@@ -41,7 +43,7 @@ describe("allow-git-rev-parse", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowGitRevParse.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -55,7 +57,7 @@ describe("allow-git-rev-parse", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowGitRevParse.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -69,7 +71,7 @@ describe("allow-git-rev-parse", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${JSON.stringify(cmd)}`, async () => {
-        const result = await allowGitRevParse.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -84,7 +86,7 @@ describe("allow-git-rev-parse", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowGitRevParse.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -96,7 +98,7 @@ describe("allow-git-rev-parse", () => {
       args: {},
       context: { cwd: "/tmp", env: {}, projectRoot: null },
     };
-    const result = await allowGitRevParse.handler(call);
+    const result = await run(call);
     expect(result.verdict).toBe(NEXT);
   });
 });

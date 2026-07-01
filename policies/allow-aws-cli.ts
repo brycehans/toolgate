@@ -1,4 +1,4 @@
-import { allow, next, type Policy } from "../src";
+import type { Policy } from "../src";
 import { safeBashCommandOrPipeline } from "./parse-bash-ast";
 
 export interface AwsCliPolicyConfig {
@@ -129,26 +129,27 @@ export function createAwsCliPolicy(config: AwsCliPolicyConfig = {}): Policy {
     name: "Allow AWS CLI",
     description:
       "Auto-allows non-destructive AWS CLI commands with ReadOnly profiles; requires approval for Admin profiles; denies destructive commands",
+  action: "allow",
     handler: async (call) => {
       const tokens = await safeBashCommandOrPipeline(call);
-      if (!tokens || tokens[0] !== "aws") return next();
+      if (!tokens || tokens[0] !== "aws") return;
 
       const profile = extractProfile(tokens);
 
       // Destructive commands — always require approval
-      if (isDestructiveCommand(tokens, extraDestructive)) return next();
+      if (isDestructiveCommand(tokens, extraDestructive)) return;
 
       // Restricted account ID mentioned — require approval
-      if (mentionsRestrictedAccount(tokens, restrictedIds)) return next();
+      if (mentionsRestrictedAccount(tokens, restrictedIds)) return;
 
       // ReadOnly profile → auto-allow non-destructive commands
-      if (profile && matchesAny(profile, readOnlyPatterns)) return allow();
+      if (profile && matchesAny(profile, readOnlyPatterns)) return true;
 
       // Admin profile → always require approval
-      if (profile && matchesAny(profile, adminPatterns)) return next();
+      if (profile && matchesAny(profile, adminPatterns)) return;
 
       // No profile or unrecognised profile → fall through to prompt
-      return next();
+      return;
     },
   };
 }

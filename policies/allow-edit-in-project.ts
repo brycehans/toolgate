@@ -1,6 +1,6 @@
 import { basename } from "path";
 import { homedir } from "os";
-import { allow, next, isWithinProject, type Policy } from "../src";
+import { isWithinProject, type Policy } from "../src";
 
 function resolveHome(p: string): string {
   if (p === "~") return homedir();
@@ -47,22 +47,23 @@ function isSensitive(filePath: string, context: { projectRoot: string; additiona
 const allowEditInProject: Policy = {
   name: "Allow edits in project",
   description: "Auto-allows Edit, Write, and Update tool calls targeting files inside the project root, except sensitive files",
+  action: "allow",
   handler: async (call) => {
-    if (call.tool !== "Edit" && call.tool !== "Write" && call.tool !== "Update") return next();
+    if (call.tool !== "Edit" && call.tool !== "Write" && call.tool !== "Update") return;
 
     const filePath = call.args.file_path;
-    if (typeof filePath !== "string") return next();
+    if (typeof filePath !== "string") return;
 
     const projectRoot = call.context.projectRoot;
-    if (!projectRoot) return next();
+    if (!projectRoot) return;
 
     const resolved = resolveHome(filePath);
     if (isWithinProject(resolved, call.context)) {
-      if (isSensitive(resolved, call.context)) return next();
-      return allow();
+      if (isSensitive(resolved, call.context)) return;
+      return true;
     }
 
-    return next();
+    return;
   },
 };
 export default allowEditInProject;

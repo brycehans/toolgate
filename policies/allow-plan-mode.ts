@@ -1,4 +1,4 @@
-import { allow, next, type Policy } from "../src";
+import type { Policy } from "../src";
 
 const PLAN_MODE_TOOLS = new Set(["EnterPlanMode", "ExitPlanMode"]);
 
@@ -9,12 +9,13 @@ const PLAN_MODE_TOOLS = new Set(["EnterPlanMode", "ExitPlanMode"]);
 const allowPlanMode: Policy = {
   name: "Allow Plan Mode",
   description: "Permits EnterPlanMode and ExitPlanMode tool calls",
+  action: "allow",
   handler: async (call) => {
     if (!PLAN_MODE_TOOLS.has(call.tool)) {
-      return next();
+      return;
     }
 
-    return allow();
+    return true;
   },
 };
 export default allowPlanMode;

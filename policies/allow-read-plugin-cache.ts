@@ -1,6 +1,6 @@
 import { join } from "path";
 import { homedir } from "os";
-import { allow, next, type Policy } from "../src";
+import type { Policy } from "../src";
 
 function resolveHome(p: string): string {
   if (p === "~") return homedir();
@@ -17,21 +17,22 @@ const allowReadPluginCache: Policy = {
   name: "Allow read plugin cache",
   description:
     "Permits Read tool calls targeting files within ~/.claude/plugins/cache/",
+  action: "allow",
   handler: async (call) => {
-    if (call.tool !== "Read") return next();
+    if (call.tool !== "Read") return;
 
     const filePath = call.args.file_path;
-    if (typeof filePath !== "string") return next();
+    if (typeof filePath !== "string") return;
 
     const resolved = resolveHome(filePath);
     if (
       resolved === PLUGIN_CACHE ||
       resolved.startsWith(PLUGIN_CACHE + "/")
     ) {
-      return allow();
+      return true;
     }
 
-    return next();
+    return;
   },
 };
 export default allowReadPluginCache;

@@ -1,4 +1,4 @@
-import { allow, next, type Policy } from "../src";
+import type { Policy } from "../src";
 import { safeBashCommandOrPipeline } from "./parse-bash-ast";
 
 /** Brew subcommands that are purely read-only / informational */
@@ -43,12 +43,13 @@ const allowBrew: Policy = {
   name: "Allow brew read-only",
   description:
     "Auto-allows read-only brew commands (list, info, search, etc.); requires approval for install, uninstall, upgrade, and other mutating commands",
+  action: "allow",
   handler: async (call) => {
     const tokens = await safeBashCommandOrPipeline(call);
-    if (!tokens || tokens[0] !== "brew") return next();
+    if (!tokens || tokens[0] !== "brew") return;
 
     // Check for safe flag-subcommands (e.g. brew --version, brew --prefix)
-    if (tokens.length >= 2 && SAFE_FLAGS.has(tokens[1])) return allow();
+    if (tokens.length >= 2 && SAFE_FLAGS.has(tokens[1])) return true;
 
     // Find the subcommand (first non-flag token after "brew")
     let subcommand: string | undefined;
@@ -58,20 +59,20 @@ const allowBrew: Policy = {
         break;
       }
     }
-    if (!subcommand) return next();
+    if (!subcommand) return;
 
     // "brew services list" is safe, "brew services start/stop/restart" is not
     if (subcommand === "services") {
       const servicesAction = tokens.find(
         (t, i) => i > tokens.indexOf("services") && !t.startsWith("-"),
       );
-      if (servicesAction && SAFE_SERVICES_SUBCOMMANDS.has(servicesAction)) return allow();
-      return next();
+      if (servicesAction && SAFE_SERVICES_SUBCOMMANDS.has(servicesAction)) return true;
+      return;
     }
 
-    if (SAFE_SUBCOMMANDS.has(subcommand)) return allow();
+    if (SAFE_SUBCOMMANDS.has(subcommand)) return true;
 
-    return next();
+    return;
   },
 };
 export default allowBrew;

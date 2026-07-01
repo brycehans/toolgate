@@ -1,4 +1,4 @@
-import { allow, next, isWithinProject, type Policy } from "../src";
+import { isWithinProject, type Policy } from "../src";
 
 /**
  * Allow Plan tool calls when the path is within the project root.
@@ -7,27 +7,28 @@ import { allow, next, isWithinProject, type Policy } from "../src";
 const allowPlanInProject: Policy = {
   name: "Allow plan in project",
   description: "Permits Plan tool calls targeting paths within the project root",
+  action: "allow",
   handler: async (call) => {
     if (call.tool !== "Plan") {
-      return next();
+      return;
     }
 
     if (!call.context.projectRoot) {
-      return next();
+      return;
     }
 
     const searchPath = call.args.path;
 
     // No path specified — Plan defaults to cwd
     if (searchPath === undefined) {
-      return isWithinProject(call.context.cwd, call.context) ? allow() : next();
+      return isWithinProject(call.context.cwd, call.context) ? true : undefined;
     }
 
     if (typeof searchPath !== "string") {
-      return next();
+      return;
     }
 
-    return isWithinProject(searchPath, call.context) ? allow() : next();
+    return isWithinProject(searchPath, call.context) ? true : undefined;
   },
 };
 export default allowPlanInProject;

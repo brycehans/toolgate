@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowGitCommit from "../allow-git-commit";
+
+const run = adaptHandler(allowGitCommit.action!, allowGitCommit.handler as any);
 
 function bash(command: string): ToolCall {
   return {
@@ -26,7 +28,7 @@ describe("allow-git-commit", () => {
 
     for (const cmd of allowed) {
       it(`allows: ${cmd}`, async () => {
-        const result = await allowGitCommit.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(ALLOW);
       });
     }
@@ -45,7 +47,7 @@ describe("allow-git-commit", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${JSON.stringify(cmd)}`, async () => {
-        const result = await allowGitCommit.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -62,7 +64,7 @@ describe("allow-git-commit", () => {
 
     for (const cmd of rejected) {
       it(`passes through: ${cmd}`, async () => {
-        const result = await allowGitCommit.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -74,7 +76,7 @@ describe("allow-git-commit", () => {
       args: {},
       context: { cwd: "/tmp", env: {}, projectRoot: null },
     };
-    const result = await allowGitCommit.handler(call);
+    const result = await run(call);
     expect(result.verdict).toBe(NEXT);
   });
 });

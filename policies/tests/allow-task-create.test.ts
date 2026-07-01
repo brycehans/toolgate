@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowTaskCreate from "../allow-task-create";
+
+const run = adaptHandler(allowTaskCreate.action!, allowTaskCreate.handler as any);
 
 const PROJECT = "/home/user/project";
 
@@ -11,7 +13,7 @@ describe("allow-task-create", () => {
       args: { subject: "Fix bug", description: "Fix the auth bug" },
       context: { cwd: PROJECT, env: {}, projectRoot: PROJECT },
     };
-    const result = await allowTaskCreate.handler(call);
+    const result = await run(call);
     expect(result.verdict).toBe(ALLOW);
   });
 
@@ -21,7 +23,7 @@ describe("allow-task-create", () => {
       args: { command: "echo hello" },
       context: { cwd: PROJECT, env: {}, projectRoot: PROJECT },
     };
-    const result = await allowTaskCreate.handler(call);
+    const result = await run(call);
     expect(result.verdict).toBe(NEXT);
   });
 
@@ -31,7 +33,7 @@ describe("allow-task-create", () => {
       args: { file_path: "/foo" },
       context: { cwd: PROJECT, env: {}, projectRoot: PROJECT },
     };
-    const result = await allowTaskCreate.handler(call);
+    const result = await run(call);
     expect(result.verdict).toBe(NEXT);
   });
 });

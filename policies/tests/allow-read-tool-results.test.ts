@@ -1,7 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import { homedir } from "os";
-import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowReadToolResults from "../allow-read-tool-results";
+
+const run = adaptHandler(allowReadToolResults.action!, allowReadToolResults.handler as any);
 
 const PROJECT = "/home/user/project";
 const PROJECTS_DIR = `${homedir()}/.claude/projects`;
@@ -17,35 +19,35 @@ function read(filePath: string): ToolCall {
 
 describe("allow-read-tool-results", () => {
   it("allows reading a file in tool-results", async () => {
-    const result = await allowReadToolResults.handler(
+    const result = await run(
       read(`${SESSION_RESULTS}/bmxf3c4ew.txt`),
     );
     expect(result.verdict).toBe(ALLOW);
   });
 
   it("allows tilde paths to tool-results", async () => {
-    const result = await allowReadToolResults.handler(
+    const result = await run(
       read("~/.claude/projects/-Users-user-Dev-myapp/abc123/tool-results/file.txt"),
     );
     expect(result.verdict).toBe(ALLOW);
   });
 
   it("does not allow reading session root (not tool-results)", async () => {
-    const result = await allowReadToolResults.handler(
+    const result = await run(
       read(`${PROJECTS_DIR}/-Users-user-Dev-myapp/abc123/transcript.jsonl`),
     );
     expect(result.verdict).toBe(NEXT);
   });
 
   it("does not allow reading the projects dir itself", async () => {
-    const result = await allowReadToolResults.handler(
+    const result = await run(
       read(PROJECTS_DIR),
     );
     expect(result.verdict).toBe(NEXT);
   });
 
   it("does not allow reading other .claude directories", async () => {
-    const result = await allowReadToolResults.handler(
+    const result = await run(
       read(`${homedir()}/.claude/settings.json`),
     );
     expect(result.verdict).toBe(NEXT);
@@ -57,7 +59,7 @@ describe("allow-read-tool-results", () => {
       args: { command: "cat ~/.claude/projects/foo/bar/tool-results/x.txt" },
       context: { cwd: PROJECT, env: {}, projectRoot: PROJECT },
     };
-    const result = await allowReadToolResults.handler(call);
+    const result = await run(call);
     expect(result.verdict).toBe(NEXT);
   });
 });

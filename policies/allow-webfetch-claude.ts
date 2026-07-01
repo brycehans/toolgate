@@ -1,4 +1,4 @@
-import { allow, next, type Policy } from "../src";
+import type { Policy } from "../src";
 
 /**
  * Allow WebFetch requests to *.claude.com URLs.
@@ -6,26 +6,27 @@ import { allow, next, type Policy } from "../src";
 const allowWebFetchClaude: Policy = {
   name: "Allow WebFetch claude.com",
   description: "Permits WebFetch requests to claude.com and subdomains",
+  action: "allow",
   handler: async (call) => {
     if (call.tool !== "WebFetch") {
-      return next();
+      return;
     }
 
     const url = call.args.url;
     if (typeof url !== "string") {
-      return next();
+      return;
     }
 
     try {
       const parsed = new URL(url);
       if (parsed.hostname === "claude.com" || parsed.hostname.endsWith(".claude.com")) {
-        return allow();
+        return true;
       }
     } catch {
       // invalid URL, pass through
     }
 
-    return next();
+    return;
   },
 };
 export default allowWebFetchClaude;

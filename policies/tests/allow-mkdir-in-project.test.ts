@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowMkdirInProject from "../allow-mkdir-in-project";
+
+const run = adaptHandler(allowMkdirInProject.action!, allowMkdirInProject.handler as any);
 
 const PROJECT = "/home/user/project";
 
@@ -25,7 +27,7 @@ describe("allow-mkdir-in-project", () => {
 
     for (const cmd of allowed) {
       it(`allows: ${cmd}`, async () => {
-        const result = await allowMkdirInProject.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(ALLOW);
       });
     }
@@ -42,7 +44,7 @@ describe("allow-mkdir-in-project", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${cmd}`, async () => {
-        const result = await allowMkdirInProject.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -50,12 +52,12 @@ describe("allow-mkdir-in-project", () => {
 
   describe("rejects mkdir with no path args", () => {
     it("rejects bare mkdir", async () => {
-      const result = await allowMkdirInProject.handler(bash("mkdir"));
+      const result = await run(bash("mkdir"));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("rejects mkdir -p (no path)", async () => {
-      const result = await allowMkdirInProject.handler(bash("mkdir -p"));
+      const result = await run(bash("mkdir -p"));
       expect(result.verdict).toBe(NEXT);
     });
   });
@@ -68,19 +70,19 @@ describe("allow-mkdir-in-project", () => {
 
     for (const cmd of rejected) {
       it(`rejects: ${JSON.stringify(cmd)}`, async () => {
-        const result = await allowMkdirInProject.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
   });
 
   it("passes through when no project root", async () => {
-    const result = await allowMkdirInProject.handler(bash("mkdir src", PROJECT, null));
+    const result = await run(bash("mkdir src", PROJECT, null));
     expect(result.verdict).toBe(NEXT);
   });
 
   it("passes through non-mkdir commands", async () => {
-    const result = await allowMkdirInProject.handler(bash("ls -la"));
+    const result = await run(bash("ls -la"));
     expect(result.verdict).toBe(NEXT);
   });
 });

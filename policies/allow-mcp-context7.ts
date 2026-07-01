@@ -1,4 +1,4 @@
-import { allow, next, type Policy } from "../src";
+import type { Policy } from "../src";
 
 /**
  * Allow all mcp__context7__* tool calls unconditionally.
@@ -7,9 +7,10 @@ import { allow, next, type Policy } from "../src";
 const allowMcpContext7: Policy = {
   name: "Allow MCP Context7",
   description: "Permits all Context7 documentation lookup tool calls",
+  action: "allow",
   handler: async (call) => {
-    if (!call.tool.startsWith("mcp__context7__")) return next();
-    return allow();
+    if (!call.tool.startsWith("mcp__context7__")) return;
+    return true;
   },
 };
 export default allowMcpContext7;

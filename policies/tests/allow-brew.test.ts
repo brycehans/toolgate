@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowBrew from "../allow-brew";
+
+const run = adaptHandler(allowBrew.action!, allowBrew.handler as any);
 
 const PROJECT = "/home/user/project";
 
@@ -47,7 +49,7 @@ describe("allow-brew", () => {
 
     for (const cmd of allowed) {
       it(`allows: ${cmd}`, async () => {
-        const result = await allowBrew.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(ALLOW);
       });
     }
@@ -61,7 +63,7 @@ describe("allow-brew", () => {
 
     for (const cmd of allowed) {
       it(`allows: ${cmd}`, async () => {
-        const result = await allowBrew.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(ALLOW);
       });
     }
@@ -97,7 +99,7 @@ describe("allow-brew", () => {
 
     for (const cmd of requireApproval) {
       it(`requires approval: ${cmd}`, async () => {
-        const result = await allowBrew.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -110,23 +112,23 @@ describe("allow-brew", () => {
         args: { file_path: "/foo" },
         context: { cwd: PROJECT, env: {}, projectRoot: PROJECT },
       };
-      const result = await allowBrew.handler(call);
+      const result = await run(call);
       expect(result.verdict).toBe(NEXT);
     });
 
     it("ignores non-brew bash commands", async () => {
-      const result = await allowBrew.handler(bash("git status"));
+      const result = await run(bash("git status"));
       expect(result.verdict).toBe(NEXT);
     });
 
     it("ignores compound commands", async () => {
-      const result = await allowBrew.handler(bash("brew list && brew install node"));
+      const result = await run(bash("brew list && brew install node"));
       expect(result.verdict).toBe(NEXT);
     });
   });
 
   it("falls through for bare brew with no subcommand", async () => {
-    const result = await allowBrew.handler(bash("brew"));
+    const result = await run(bash("brew"));
     expect(result.verdict).toBe(NEXT);
   });
 });

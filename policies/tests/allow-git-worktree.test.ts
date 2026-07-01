@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowGitWorktree from "../allow-git-worktree";
+
+const run = adaptHandler(allowGitWorktree.action!, allowGitWorktree.handler as any);
 
 const PROJECT = "/home/user/project";
 
@@ -33,7 +35,7 @@ describe("allow-git-worktree", () => {
 
     for (const cmd of allowed) {
       it(`allows: ${cmd}`, async () => {
-        const result = await allowGitWorktree.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(ALLOW);
       });
     }
@@ -41,14 +43,14 @@ describe("allow-git-worktree", () => {
 
   describe("real-world patterns from logs", () => {
     it("allows: git worktree add with branch and remote tracking", async () => {
-      const result = await allowGitWorktree.handler(
+      const result = await run(
         bash("git worktree add .claude/worktrees/remove-poc -b remove-poc origin/develop"),
       );
       expect(result.verdict).toBe(ALLOW);
     });
 
     it("allows: git worktree remove", async () => {
-      const result = await allowGitWorktree.handler(
+      const result = await run(
         bash("git worktree remove .claude/worktrees/remove-poc"),
       );
       expect(result.verdict).toBe(ALLOW);
@@ -65,7 +67,7 @@ describe("allow-git-worktree", () => {
 
     for (const cmd of passThrough) {
       it(`next: ${cmd}`, async () => {
-        const result = await allowGitWorktree.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -77,7 +79,7 @@ describe("allow-git-worktree", () => {
       args: { file_path: "/foo" },
       context: { cwd: PROJECT, env: {}, projectRoot: PROJECT },
     };
-    const result = await allowGitWorktree.handler(call);
+    const result = await run(call);
     expect(result.verdict).toBe(NEXT);
   });
 });

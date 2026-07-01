@@ -1,6 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { DENY, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
+import { adaptHandler, DENY, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import redirectPythonJsonToFx from "../redirect-python-json-to-fx";
+
+const run = adaptHandler(redirectPythonJsonToFx.action!, redirectPythonJsonToFx.handler as any);
 
 const PROJECT = "/home/user/project";
 
@@ -25,7 +27,7 @@ describe("redirect-python-json-to-fx", () => {
 
     for (const cmd of denied) {
       it(`denies: ${cmd}`, async () => {
-        const result = await redirectPythonJsonToFx.handler(bash(cmd));
+        const result = await run(bash(cmd));
         expect(result.verdict).toBe(DENY);
       });
     }
@@ -69,7 +71,7 @@ describe("redirect-python-json-to-fx", () => {
 
     for (const { cmd, desc } of cases) {
       it(`denies: "${desc}"`, async () => {
-        const result = await redirectPythonJsonToFx.handler(bash(cmd, desc));
+        const result = await run(bash(cmd, desc));
         expect(result.verdict).toBe(DENY);
       });
     }
@@ -101,7 +103,7 @@ describe("redirect-python-json-to-fx", () => {
 
     for (const { cmd, desc } of allowed) {
       it(`passes through: "${desc}"`, async () => {
-        const result = await redirectPythonJsonToFx.handler(bash(cmd, desc));
+        const result = await run(bash(cmd, desc));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -109,7 +111,7 @@ describe("redirect-python-json-to-fx", () => {
 
   describe("passes through when no description", () => {
     it("python3 -c with json but no description", async () => {
-      const result = await redirectPythonJsonToFx.handler(
+      const result = await run(
         bash('python3 -c "import json; print(json.load(open(\'x.json\')))"'),
       );
       expect(result.verdict).toBe(NEXT);
@@ -126,7 +128,7 @@ describe("redirect-python-json-to-fx", () => {
 
     for (const { cmd, desc } of ignored) {
       it(`passes through: ${cmd}`, async () => {
-        const result = await redirectPythonJsonToFx.handler(bash(cmd, desc));
+        const result = await run(bash(cmd, desc));
         expect(result.verdict).toBe(NEXT);
       });
     }
@@ -138,7 +140,7 @@ describe("redirect-python-json-to-fx", () => {
       args: { file_path: "/some/file.json" },
       context: { cwd: PROJECT, env: {}, projectRoot: PROJECT },
     };
-    const result = await redirectPythonJsonToFx.handler(call);
+    const result = await run(call);
     expect(result.verdict).toBe(NEXT);
   });
 });
