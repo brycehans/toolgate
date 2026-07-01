@@ -68,7 +68,6 @@ import allowVersionProbes from "./allow-version-probes";
 import allowDate from "./allow-date";
 import allowNonDestructiveGit from "./allow-non-destructive-git";
 import allowGhIssuePr from "./allow-gh-issue-pr";
-import allowTmux from "./allow-tmux";
 import allowAwsCli from "./allow-aws-cli";
 import allowBrew from "./allow-brew";
 import allowToolgateTest from "./allow-toolgate-test";
@@ -145,7 +144,6 @@ export const builtinPolicies = [
   allowVersionProbes,
   allowDate,
   allowNonDestructiveGit,
-  allowTmux,
   allowAwsCli,
   allowBrew,
   allowToolgateTest,
