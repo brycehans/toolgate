@@ -70,7 +70,7 @@ When creating a new policy or renaming an existing one, you **must** update `pol
 - **Shell command safety**: Use `shfmt --tojson` (via `policies/parse-bash-ast.ts`) to parse Bash commands into typed ASTs. Use `safeBashCommand()` for simple commands, `safeBashCommandOrPipeline()` for commands that may pipe to safe filters, or `getAndChainSegments()` to decompose `&&` chains into leaf statements. These reject unsafe patterns (substitution, chaining, background, unsafe redirects) at the AST level.
 - **Self-imports in tests**: Policy tests import from `"@brycehanscomb/toolgate"` (package self-reference) instead of relative `../../../src` paths
 - **Policy handlers are async**: All handlers return `Promise<string | boolean | void>`
-- **Testing policy handlers**: Tests wrap handlers with `adaptHandler()` to get `VerdictResult` objects for assertions: `const run = adaptHandler(policy.action!, policy.handler as any)`
+- **Testing policy handlers**: Tests wrap handlers with `adaptHandler()` to get `VerdictResult` objects for assertions: `const run = adaptHandler(policy.action, policy.handler)`
 
 ## Writing a Policy
 

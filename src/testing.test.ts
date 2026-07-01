@@ -1,17 +1,20 @@
 import { describe, expect, it } from 'bun:test'
 import { testPolicy } from './testing'
-import { definePolicy, allow, deny, next } from './index'
+import { definePolicy } from './index'
 import type { Policy } from './types'
 
-function p(name: string, handler: Policy['handler']): Policy {
-  return { name, description: `test: ${name}`, handler }
+function allowP(name: string, handler: Policy['handler']): Policy {
+  return { name, description: `test: ${name}`, action: 'allow', handler }
+}
+function denyP(name: string, handler: Policy['handler']): Policy {
+  return { name, description: `test: ${name}`, action: 'deny', handler }
 }
 
 describe('testPolicy', () => {
   it('passes when expectations match', async () => {
     const policy = definePolicy([
-      p('allow-read', async (call) => call.tool === 'Read' ? allow() : next()),
-      p('deny-rest', async () => deny()),
+      allowP('allow-read', async (call) => call.tool === 'Read'),
+      denyP('deny-non-read', async (call) => call.tool !== 'Read'),
     ])
 
     // Should not throw
@@ -23,7 +26,7 @@ describe('testPolicy', () => {
 
   it('throws when expectation does not match', async () => {
     const policy = definePolicy([
-      p('deny-all', async () => deny()),
+      denyP('deny-all', async () => true),
     ])
 
     expect(

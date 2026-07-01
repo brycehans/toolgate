@@ -8,6 +8,7 @@ import denyGhHeredoc from "./deny-gh-heredoc";
 import denySshCompound from "./deny-ssh-compound";
 import denyMixedPureChains from "./deny-mixed-pure-chains";
 import denyPerlOneLiners from "./deny-perl-one-liners";
+import denyGhIssuePrDelete from "./deny-gh-issue-pr-delete";
 import denyWranglerPipes from "./deny-wrangler-pipes";
 import redirectTrivialWranglerToRead from "./redirect-trivial-wrangler-to-read";
 import denyAndChains from "./deny-and-chains";
@@ -67,7 +68,6 @@ import allowVersionProbes from "./allow-version-probes";
 import allowDate from "./allow-date";
 import allowNonDestructiveGit from "./allow-non-destructive-git";
 import allowGhIssuePr from "./allow-gh-issue-pr";
-import allowTmux from "./allow-tmux";
 import allowAwsCli from "./allow-aws-cli";
 import allowBrew from "./allow-brew";
 import allowToolgateTest from "./allow-toolgate-test";
@@ -85,6 +85,7 @@ export const builtinPolicies = [
   denySshCompound,
   denyMixedPureChains,
   denyPerlOneLiners,
+  denyGhIssuePrDelete,
   denyWranglerPipes,
   redirectTrivialWranglerToRead,
   denyAndChains,
@@ -143,7 +144,6 @@ export const builtinPolicies = [
   allowVersionProbes,
   allowDate,
   allowNonDestructiveGit,
-  allowTmux,
   allowAwsCli,
   allowBrew,
   allowToolgateTest,
