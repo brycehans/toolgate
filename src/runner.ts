@@ -9,6 +9,9 @@ interface HookInput {
   tool_input: Record<string, any>
   cwd: string
   session_id?: string
+  /** Set by Claude Code when the call originates from a subagent. */
+  agent_id?: string
+  agent_type?: string
   [key: string]: any
 }
 
@@ -31,6 +34,8 @@ export function buildToolCall(input: HookInput): ToolCall {
       env: Object.fromEntries(Object.entries(process.env).filter(([, v]) => v !== undefined)) as Record<string, string>,
       projectRoot,
       additionalDirs: loadAdditionalDirs(projectRoot),
+      agentId: input.agent_id,
+      agentType: input.agent_type,
     },
   }
 }

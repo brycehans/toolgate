@@ -141,6 +141,39 @@ Each policy handler receives a `ToolCall` with:
 - `context.cwd` — working directory
 - `context.projectRoot` — git repository root (or `null`)
 - `context.env` — environment variables
+- `context.agentType` — the subagent type (e.g. `"Explore"`, `"general-purpose"`) when the call originates from a subagent; `undefined` for main-agent calls
+- `context.agentId` — the subagent's id when applicable; `undefined` otherwise
+
+### Subagent-specific rules
+
+Subagents (dispatched via the `Agent` tool) run their own tool calls through the same policy chain as the main agent, so **every policy already applies to them**. In addition, you can write policies that gate on _who_ is calling — allowing or denying a call specifically because it comes from a subagent — using `context.agentType` or the `isSubagent(call)` helper:
+
+```ts
+import { isSubagent, deny, next, type Policy } from "@brycehanscomb/toolgate";
+
+const denySubagentPush: Policy = {
+  name: "Deny subagent git push",
+  description: "Subagents may not push to remotes",
+  handler: async (call) => {
+    if (!isSubagent(call)) return next();
+    if (call.tool === "Bash" && call.args.command?.startsWith("git push")) {
+      return deny(`Subagent (${call.context.agentType}) may not push`);
+    }
+    return next();
+  },
+};
+```
+
+Toolgate ships one such policy as an **opt-in** example, [`deny-nested-subagent-spawn`](policies/deny-nested-subagent-spawn.ts), which stops a subagent from spawning further subagents (capping agent nesting at one level). It is intentionally _not_ a built-in — enable it by importing it into a config:
+
+```ts
+import { definePolicy } from "@brycehanscomb/toolgate";
+import denyNestedSubagentSpawn from "@brycehanscomb/toolgate/policies/deny-nested-subagent-spawn";
+
+export default definePolicy([denyNestedSubagentSpawn]);
+```
+
+> **Note:** the hook payload exposes _whether_ the caller is a subagent, but not the numeric nesting depth or a parent-agent pointer — so the enforceable limit is "one level," not an arbitrary depth.
 
 ### Bash Policy Safety
 
