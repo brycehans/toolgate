@@ -1,5 +1,4 @@
-import { allow, next, type Policy, type ToolCall } from "../src";
-import { runPolicy } from "../src/policy";
+import { ALLOW, runPolicy, type Policy, type ToolCall } from "../src";
 import { safeBashCommand } from "./parse-bash-ast";
 
 /**
@@ -33,20 +32,21 @@ const TERMINAL_KEYS = new Set(["Enter", "C-m", "C-c", "C-d", ""]);
 const allowTmux: Policy = {
   name: "Allow tmux read and send-keys",
   description:
-    "Auto-allows read-only tmux commands; for send-keys, extracts the inner command and evaluates it through the policy chain",
+    "Auto-allows read-only tmux commands; for send-keys, extracts the inner command and allows only if the policy chain would allow it",
+  action: "allow",
   handler: async (call) => {
     const tokens = await safeBashCommand(call);
-    if (!tokens) return next();
-    if (tokens[0] !== "tmux") return next();
+    if (!tokens) return;
+    if (tokens[0] !== "tmux") return;
 
     const sub = tokens[1];
-    if (!sub) return next();
+    if (!sub) return;
 
     // Read-only tmux subcommands → allow
-    if (READ_ONLY_TMUX.has(sub)) return allow();
+    if (READ_ONLY_TMUX.has(sub)) return true;
 
     // send-keys → extract inner command, evaluate through policies
-    if (sub !== "send-keys") return next();
+    if (sub !== "send-keys") return;
 
     const rest = tokens.slice(2);
     const commandParts: string[] = [];
@@ -61,9 +61,12 @@ const allowTmux: Policy = {
     }
 
     const innerCommand = commandParts.join(" ");
-    if (!innerCommand) return allow(); // just sending Enter/C-c/etc.
+    if (!innerCommand) return true; // just sending Enter/C-c/etc.
 
-    // Create synthetic Bash call and run through the policy chain
+    // Create synthetic Bash call and run through the policy chain.
+    // As an allow-only policy we can just green-light the safe cases; if the
+    // chain wouldn't allow the inner command, fall through so it's prompted
+    // (a would-be inner deny becomes an ask, which is still safe).
     const { builtinPolicies } = await import("./index");
     const otherPolicies = builtinPolicies.filter((p: Policy) => p !== allowTmux);
 
@@ -73,7 +76,9 @@ const allowTmux: Policy = {
       context: call.context,
     };
 
-    return runPolicy(otherPolicies, syntheticCall);
+    const result = await runPolicy(otherPolicies, syntheticCall);
+    if (result.verdict === ALLOW) return true;
+    return;
   },
 };
 export default allowTmux;

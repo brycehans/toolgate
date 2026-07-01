@@ -8,6 +8,7 @@ import denyGhHeredoc from "./deny-gh-heredoc";
 import denySshCompound from "./deny-ssh-compound";
 import denyMixedPureChains from "./deny-mixed-pure-chains";
 import denyPerlOneLiners from "./deny-perl-one-liners";
+import denyGhIssuePrDelete from "./deny-gh-issue-pr-delete";
 import denyWranglerPipes from "./deny-wrangler-pipes";
 import redirectTrivialWranglerToRead from "./redirect-trivial-wrangler-to-read";
 import denyAndChains from "./deny-and-chains";
@@ -85,6 +86,7 @@ export const builtinPolicies = [
   denySshCompound,
   denyMixedPureChains,
   denyPerlOneLiners,
+  denyGhIssuePrDelete,
   denyWranglerPipes,
   redirectTrivialWranglerToRead,
   denyAndChains,
