@@ -17,14 +17,15 @@ function findToolgateSrc(): string {
 }
 
 function projectTemplate(srcPath: string): string {
-  return `import { definePolicy, allow, deny, next } from '${srcPath}'
+  return `import { definePolicy } from '${srcPath}'
 
 export default definePolicy([
   // Example:
   // {
   //   name: 'Allow file reads',
   //   description: 'Permits all Read tool calls',
-  //   handler: async (call) => call.tool === 'Read' ? allow() : next(),
+  //   action: 'allow',
+  //   handler: async (call) => call.tool === 'Read',
   // },
 ])
 

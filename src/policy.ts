@@ -1,5 +1,5 @@
 import type { Policy, ToolCall, VerdictResult } from './types'
-import { isVerdictResult, next, NEXT } from './verdicts'
+import { next, NEXT } from './verdicts'
 import { adaptHandler } from './adapter'
 
 export function definePolicy(policies: Policy[]): Policy[] {
@@ -23,7 +23,6 @@ export async function runPolicy(policies: Policy[], call: ToolCall): Promise<Ver
 
 export async function runPolicyWithTrace(policies: Policy[], call: ToolCall): Promise<TracedResult> {
   // Partition into deny-first, allow-second, preserving relative order within each group.
-  // Legacy policies (no action) run in their original position among allow policies.
   const denyPolicies: { policy: Policy; originalIndex: number }[] = []
   const allowPolicies: { policy: Policy; originalIndex: number }[] = []
 
@@ -39,23 +38,9 @@ export async function runPolicyWithTrace(policies: Policy[], call: ToolCall): Pr
   const ordered = [...denyPolicies, ...allowPolicies]
 
   for (const { policy, originalIndex } of ordered) {
-    let result: VerdictResult
-
-    if (policy.action) {
-      // New-style policy: adapt simplified return values to VerdictResult
-      const adapted = adaptHandler(policy.action, policy.handler as any)
-      result = await adapted(call)
-    } else {
-      // Legacy policy (no action): handler returns VerdictResult directly
-      result = await (policy.handler as any)(call)
-    }
-
-    if (!isVerdictResult(result)) {
-      throw new Error(
-        `toolgate: policy[${originalIndex}] "${policy.name}" returned invalid verdict: ${JSON.stringify(result)}\n` +
-        `  Every policy handler must return allow(), deny(), or next().`
-      )
-    }
+    // Adapt the policy's simplified return value into a VerdictResult.
+    const adapted = adaptHandler(policy.action, policy.handler)
+    const result = await adapted(call)
 
     if (result.verdict !== NEXT) {
       return { result, index: originalIndex, name: policy.name, description: policy.description }

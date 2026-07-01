@@ -18,15 +18,12 @@ export type VerdictResult =
   | { verdict: typeof DENY; reason?: string }
   | { verdict: typeof NEXT };
 
-/** @internal Used by the engine to run adapted handlers */
-export type Middleware = (call: ToolCall) => Promise<VerdictResult>;
-
-/** New simplified handler signature for policy authors */
+/** The handler signature every policy uses. */
 export type PolicyHandler = (call: ToolCall) => Promise<string | boolean | void>;
 
 export interface Policy {
   name: string;
   description: string;
-  action?: "deny" | "allow";
-  handler: PolicyHandler | Middleware;
+  action: "deny" | "allow";
+  handler: PolicyHandler;
 }

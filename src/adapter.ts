@@ -1,10 +1,10 @@
-import type { ToolCall, VerdictResult, PolicyHandler, Middleware } from "./types";
+import type { ToolCall, VerdictResult, PolicyHandler } from "./types";
 import { allow, deny, next } from "./verdicts";
 
 export function adaptHandler(
   action: "deny" | "allow",
   handler: PolicyHandler,
-): Middleware {
+): (call: ToolCall) => Promise<VerdictResult> {
   return async (call: ToolCall): Promise<VerdictResult> => {
     const result = await handler(call);
 
