@@ -18,7 +18,9 @@ export function adaptHandler(
     }
 
     // action === "deny"
-    if (typeof result === "string") {
+    // An empty reason string is treated as a reasonless deny, so the
+    // reason field is consistently undefined when there's no message.
+    if (typeof result === "string" && result.length > 0) {
       return deny(result);
     }
     return deny();
