@@ -89,6 +89,25 @@ describe("wordToString", () => {
     const word = (file!.Stmts[0].Cmd as any).Args[1];
     expect(wordToString(word)).toBeNull();
   });
+
+  it("flattens a double-quoted word shfmt splits into multiple literal parts", async () => {
+    // shfmt isolates the trailing `$`, so this becomes two Lit parts
+    const file = await parseShell('grep -E "\\.(ts|tsx)$"');
+    const word = (file!.Stmts[0].Cmd as any).Args[2];
+    expect(wordToString(word)).toBe("\\.(ts|tsx)$");
+  });
+
+  it("flattens adjacent quoted/unquoted literals", async () => {
+    const file = await parseShell('echo foo"bar"\'baz\'');
+    const word = (file!.Stmts[0].Cmd as any).Args[1];
+    expect(wordToString(word)).toBe("foobarbaz");
+  });
+
+  it("returns null when a literal word is adjacent to a param expansion", async () => {
+    const file = await parseShell('echo "prefix-$HOME"');
+    const word = (file!.Stmts[0].Cmd as any).Args[1];
+    expect(wordToString(word)).toBeNull();
+  });
 });
 
 // getArgs

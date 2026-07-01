@@ -146,46 +146,39 @@ export async function parseShell(
 
 // AST query helpers
 
-export function wordToString(word: Word): string | null {
-  const parts = word.Parts;
-  if (parts.length === 0) return null;
-
-  if (parts.length === 1) {
-    const p = parts[0];
-    if (p.Type === "Lit") return (p as Lit).Value;
-    if (p.Type === "SglQuoted") return (p as SglQuoted).Value;
-    if (p.Type === "DblQuoted") {
-      const dbl = p as DblQuoted;
-      if (!dbl.Parts || dbl.Parts.length === 0) return "";
-      if (dbl.Parts.length === 1 && dbl.Parts[0].Type === "Lit") {
-        return (dbl.Parts[0] as Lit).Value;
-      }
-      return null;
-    }
-    return null;
-  }
-
-  // Multi-part: each part must resolve to a string
-  const values: string[] = [];
+/**
+ * Flatten a list of word parts to a constant string, or null if any part is
+ * dynamic (command/parameter/arithmetic substitution, process substitution).
+ *
+ * Only Lit, SglQuoted, and (recursively) DblQuoted parts are constant. shfmt
+ * commonly splits a double-quoted word into several Lit parts — e.g. it
+ * isolates a trailing `$` so `"\.(ts|tsx)$"` becomes ["\.(ts|tsx)", "$"]. Such
+ * a word is still a constant string, so we concatenate the literal parts rather
+ * than bailing out the moment there's more than one.
+ */
+function flattenLiteralParts(parts: WordPart[] | undefined): string | null {
+  if (!parts) return "";
+  let out = "";
   for (const p of parts) {
     if (p.Type === "Lit") {
-      values.push((p as Lit).Value);
+      out += (p as Lit).Value;
     } else if (p.Type === "SglQuoted") {
-      values.push((p as SglQuoted).Value);
+      out += (p as SglQuoted).Value;
     } else if (p.Type === "DblQuoted") {
-      const dbl = p as DblQuoted;
-      if (!dbl.Parts || dbl.Parts.length === 0) {
-        values.push("");
-      } else if (dbl.Parts.length === 1 && dbl.Parts[0].Type === "Lit") {
-        values.push((dbl.Parts[0] as Lit).Value);
-      } else {
-        return null;
-      }
+      const inner = flattenLiteralParts((p as DblQuoted).Parts);
+      if (inner === null) return null;
+      out += inner;
     } else {
+      // CmdSubst, ParamExp, ArithmExp, ProcSubst — dynamic, not a constant
       return null;
     }
   }
-  return values.join("");
+  return out;
+}
+
+export function wordToString(word: Word): string | null {
+  if (word.Parts.length === 0) return null;
+  return flattenLiteralParts(word.Parts);
 }
 
 /** Env var assignments that are safe to ignore (benign prefixes). */
