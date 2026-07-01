@@ -1,7 +1,7 @@
 import { readFileSync, existsSync } from "fs";
 import { homedir } from "os";
 import { join, resolve } from "path";
-import type { CallContext } from "./types";
+import type { CallContext, ToolCall } from "./types";
 
 interface SettingsJson {
   permissions?: {
@@ -58,4 +58,13 @@ export function isWithinProject(resolvedPath: string, context: Pick<CallContext,
   return dirs.some(
     (dir) => resolvedPath === dir || resolvedPath.startsWith(dir + "/"),
   );
+}
+
+/**
+ * Whether a tool call originates from a subagent (Agent tool dispatch) rather
+ * than the main agent. Claude Code sets `agent_type` on the hook payload for
+ * subagent calls; main-agent calls leave it undefined.
+ */
+export function isSubagent(call: ToolCall): boolean {
+  return call.context.agentType != null;
 }

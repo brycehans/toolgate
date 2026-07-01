@@ -11,6 +11,10 @@ export interface CallContext {
   env: Record<string, string>;
   projectRoot: string;
   additionalDirs: string[];
+  /** Present only when the call originates from a subagent (Agent tool dispatch). */
+  agentId?: string;
+  /** The subagent type (e.g. "Explore", "general-purpose"). Undefined for main-agent calls. */
+  agentType?: string;
 }
 
 export type VerdictResult =
