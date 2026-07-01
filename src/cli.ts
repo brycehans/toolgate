@@ -49,6 +49,13 @@ switch (command) {
     await disableCmd(args)
     break
 
+  case 'migrate': {
+    // Lazy import: pulls in typescript, which the run hot path must never load.
+    const { migrateCmd } = await import('./migrate-cmd')
+    await migrateCmd(args)
+    break
+  }
+
   case 'suspend':
     await suspend()
     break
@@ -58,7 +65,7 @@ switch (command) {
     break
 
   default:
-    console.error('Usage: toolgate <run|init|test|list|audit|disable|suspend|logs>')
+    console.error('Usage: toolgate <run|init|test|list|audit|disable|migrate|suspend|logs>')
     console.error('  run              Run policy chain (called by hooks)')
     console.error('  init             Register PreToolUse hook')
     console.error('  init --project   Set up project config')
@@ -71,6 +78,8 @@ switch (command) {
     console.error('    --local        Target toolgate.config.local.ts (create in cwd if missing)')
     console.error('    --file=<path>  Target a specific config file (create if missing)')
     console.error('    --json         Dump all policies + disable state as JSON')
+    console.error('  migrate [paths]  Codemod legacy Middleware policies to the 2.x action API')
+    console.error('    --write        Apply changes (default: dry-run report)')
     console.error('  suspend          Suspend all policies (Ctrl+C to resume)')
     console.error('  logs             Show Claude Code log file locations')
     process.exit(1)
