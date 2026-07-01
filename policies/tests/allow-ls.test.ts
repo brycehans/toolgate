@@ -102,6 +102,40 @@ describe("allow-ls", () => {
     }
   });
 
+  describe("allows ;-separated ls sequences", () => {
+    const allowed = [
+      "ls a; ls b",
+      "ls -la docs/screenshots/x.png 2>&1; ls -la x.png 2>&1",
+      "ls src; ls /etc; ls /tmp",
+      "ls -la | grep foo; ls bar",
+      "ls a;ls b",
+    ];
+
+    for (const cmd of allowed) {
+      it(`allows: ${cmd}`, async () => {
+        const result = await run(bash(cmd));
+        expect(result.verdict).toBe(ALLOW);
+      });
+    }
+  });
+
+  describe("rejects ;-sequences where any statement is not a safe ls", () => {
+    const rejected = [
+      "ls; echo pwned",
+      "ls a; rm b",
+      "ls a; ls .ssh",
+      "ls a; cat /etc/passwd",
+      "ls a; ls b | xargs rm",
+    ];
+
+    for (const cmd of rejected) {
+      it(`rejects: ${cmd}`, async () => {
+        const result = await run(bash(cmd));
+        expect(result.verdict).toBe(NEXT);
+      });
+    }
+  });
+
   describe("allows ls piped to safe filters", () => {
     const allowed = [
       "ls -la | grep -i site",
