@@ -43,9 +43,16 @@ go install mvdan.cc/sh/v3/cmd/shfmt@latest
 
 ### Package
 
+Install by cloning the repository and linking a local checkout:
+
 ```bash
-bun install -g @brycehanscomb/toolgate
+git clone git@github.com:brycehans/toolgate.git
+cd toolgate
+bun install
+bun link
 ```
+
+`bun link` puts the `toolgate` executable on your PATH via the `bin` field in `package.json`.
 
 ## Setup
 
