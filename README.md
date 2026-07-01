@@ -184,6 +184,7 @@ ALLOW
 - **[Pinning scripts](docs/pinning-scripts.md)** — `pinnedScripts()` verifies a whitelisted script's contents by SHA-256 on every run, so allowing `node query.mjs` doesn't blindly trust future rewrites.
 - **[Subagent policies](docs/subagents.md)** — gating tool calls on *who* is calling with `isSubagent()` / `context.agentType`, plus the opt-in nested-spawn guard.
 - **[The bridge](docs/bridge.md)** — a stdin/stdout entry point that lets non-Claude-Code agents (e.g. OpenCode) use toolgate's policy engine.
+- **[How toolgate compares](docs/comparison.md)** — the landscape of agent tool-gates (Claude Code hooks, MCP gateways, OS sandboxes), and how toolgate's programmable, dev-defined policies differ from fixed intent classifiers like nah.
 
 ## License
 
