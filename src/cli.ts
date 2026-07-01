@@ -8,6 +8,7 @@ import { auditPermissions } from './audit-cmd'
 import { disableCmd } from './disable-cmd'
 import { suspend } from './suspend'
 import { logsCmd } from './logs-cmd'
+import { hashCmd } from './hash-cmd'
 
 const [command, ...args] = process.argv.slice(2)
 
@@ -64,8 +65,12 @@ switch (command) {
     logsCmd()
     break
 
+  case 'hash':
+    await hashCmd(args)
+    break
+
   default:
-    console.error('Usage: toolgate <run|init|test|list|audit|disable|migrate|suspend|logs>')
+    console.error('Usage: toolgate <run|init|test|list|audit|disable|migrate|suspend|logs|hash>')
     console.error('  run              Run policy chain (called by hooks)')
     console.error('  init             Register PreToolUse hook')
     console.error('  init --project   Set up project config')
@@ -82,5 +87,6 @@ switch (command) {
     console.error('    --write        Apply changes (default: dry-run report)')
     console.error('  suspend          Suspend all policies (Ctrl+C to resume)')
     console.error('  logs             Show Claude Code log file locations')
+    console.error('  hash <file...>   Print SHA-256 of files for pinnedScripts({...}) pins')
     process.exit(1)
 }
