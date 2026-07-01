@@ -24,9 +24,12 @@ const allowRmProjectTmp: Policy = {
 
     if (paths.length === 0) return;
 
-    // Require approval for -r or -f flags
-    const hasUnsafeFlag = flags.some((f) => /[rf]/.test(f));
-    if (hasUnsafeFlag) return;
+    // Require approval for recursive (-r/-R/--recursive) deletes; -f/--force is
+    // fine since every target is already constrained to tmp/ below.
+    const hasRecursiveFlag = flags.some((f) =>
+      f.startsWith("--") ? f === "--recursive" : /[rR]/.test(f),
+    );
+    if (hasRecursiveFlag) return;
 
     const allInTmp = paths.every((p) => {
       const resolved = resolve(call.context.cwd, p);

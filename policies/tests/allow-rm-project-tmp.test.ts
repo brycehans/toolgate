@@ -37,12 +37,27 @@ describe("allow-rm-project-tmp", () => {
     expect(result.verdict).toBe(ALLOW);
   });
 
-  describe("requires approval for -r or -f flags in tmp/", () => {
-    const flagged = [
+  describe("allows -f/--force flags in tmp/", () => {
+    const allowed = [
       "rm -f tmp/pr-body.md",
+      "rm -fi tmp/file.txt",
+      "rm --force tmp/file.txt",
+    ];
+
+    for (const cmd of allowed) {
+      it(`allows: ${cmd}`, async () => {
+        const result = await run(bash(cmd));
+        expect(result.verdict).toBe(ALLOW);
+      });
+    }
+  });
+
+  describe("requires approval for recursive flags in tmp/", () => {
+    const flagged = [
       "rm -rf tmp/build-output",
       "rm -r tmp/nested/dir",
-      "rm -fi tmp/file.txt",
+      "rm -R tmp/nested/dir",
+      "rm --recursive tmp/nested/dir",
     ];
 
     for (const cmd of flagged) {
