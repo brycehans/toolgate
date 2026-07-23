@@ -245,6 +245,31 @@ describe("allow-safe-read-commands", () => {
     }
   });
 
+  describe("rejects home-relative and dot-prefixed reads (containment escape)", () => {
+    const rejected = [
+      "cat ~/.aws/credentials",
+      "cat ~/.ssh/id_rsa",
+      "head ~/.netrc",
+      "cat ~/notes.txt",
+      "tail -20 ~/.zsh_history",
+      "cat .env",
+      "cat config/.env",
+      "head .git/config",
+      "cat src/.secret",
+      "cat $HOME/.aws/credentials",
+      "cat ${HOME}/.ssh/id_rsa",
+      "cat < ~/.ssh/id_rsa",
+      "jq '.' ~/.config/secrets.json",
+    ];
+
+    for (const cmd of rejected) {
+      it(`rejects: ${cmd}`, async () => {
+        const result = await run(bash(cmd));
+        expect(result.verdict).toBe(NEXT);
+      });
+    }
+  });
+
   it("passes through when no project root", async () => {
     const result = await run(bash("cat README.md", PROJECT, null));
     expect(result.verdict).toBe(NEXT);

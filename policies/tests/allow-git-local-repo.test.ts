@@ -1,4 +1,4 @@
-import { describe, expect, it, mock, beforeEach } from "bun:test";
+import { describe, expect, it, mock, beforeEach, afterAll } from "bun:test";
 import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 
 // Mock Bun.spawn to simulate `git remote` output
@@ -43,6 +43,13 @@ describe("allow-git-local-repo", () => {
       }
       return originalSpawn(...(args as Parameters<typeof originalSpawn>));
     };
+  });
+
+  // Restore the real Bun.spawn so the mock doesn't leak into later test files
+  // (e.g. the red-team suite, which runs the full policy chain and would
+  // otherwise see `git remote` as empty → every repo looks "local").
+  afterAll(() => {
+    Bun.spawn = originalSpawn;
   });
 
   describe("allows git commands in local repos", () => {
