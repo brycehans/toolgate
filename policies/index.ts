@@ -12,6 +12,7 @@ import denyGhIssuePrDelete from "./deny-gh-issue-pr-delete";
 import denyWranglerPipes from "./deny-wrangler-pipes";
 import redirectTrivialWranglerToRead from "./redirect-trivial-wrangler-to-read";
 import denyAndChains from "./deny-and-chains";
+import denyWebfetchExfil from "./deny-webfetch-exfil";
 import redirectPythonJsonToFx from "./redirect-python-json-to-fx";
 import redirectPlansToProject from "./redirect-plans-to-project";
 import allowBunTest from "./allow-bun-test";
@@ -89,6 +90,7 @@ export const builtinPolicies = [
   denyWranglerPipes,
   redirectTrivialWranglerToRead,
   denyAndChains,
+  denyWebfetchExfil,
   allowBunTest,
   allowGitAdd,
   allowGitDiff,
