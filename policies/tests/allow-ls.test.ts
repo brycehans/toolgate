@@ -55,8 +55,6 @@ describe("allow-ls", () => {
       "ls ./.next",
       "ls ~/.ssh",
       "ls ~/.aws/credentials.d",
-      `ls ${HOME}/.claude`,
-      `ls ${HOME}/.claude/plugins/marketplaces`,
       "ls /home/user/.gnupg",
       `ls ${PROJECT}/.git/refs`,
       "ls -la src/.cache nested",
@@ -68,6 +66,38 @@ describe("allow-ls", () => {
         expect(result.verdict).toBe(NEXT);
       });
     }
+  });
+
+  describe("allows ls into declared safe dot-paths", () => {
+    const allowed = [
+      `ls ${HOME}/.claude`,
+      `ls ${HOME}/.claude/plugins/marketplaces`,
+      "ls ~/.claude",
+      `ls ${HOME}/.bun/install/global/node_modules/@brycehanscomb/toolgate/src`,
+      `ls ${HOME}/Dev/brain/.system`,
+    ];
+
+    for (const cmd of allowed) {
+      it(`allows: ${cmd}`, async () => {
+        const result = await run(bash(cmd));
+        expect(result.verdict).toBe(ALLOW);
+      });
+    }
+
+    it("does not let a lookalike path borrow the allowlist entry", async () => {
+      const result = await run(bash(`ls ${HOME}/Dev/.claude`));
+      expect(result.verdict).toBe(NEXT);
+    });
+
+    it("matches on the resolved path, not the string, so a relative route in is allowed", async () => {
+      const result = await run(bash("ls ../.claude", `${HOME}/Dev`));
+      expect(result.verdict).toBe(ALLOW);
+    });
+
+    it("keeps a sibling of an allowlisted dir out", async () => {
+      const result = await run(bash(`ls ${HOME}/.bun/install/cache`));
+      expect(result.verdict).toBe(NEXT);
+    });
   });
 
   describe("allows ls regardless of cwd", () => {

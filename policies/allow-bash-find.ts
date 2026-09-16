@@ -2,14 +2,9 @@ import { resolve } from "node:path";
 import { homedir } from "node:os";
 import type { Policy } from "../src";
 import { parseShell, getPipelineCommands, getArgs, isSafeFilter } from "./parse-bash-ast";
+import { hasUnsafeDotSegment, resolveHome } from "./safe-dot-paths";
 
 const HOME = homedir();
-
-function resolveHome(p: string): string {
-  if (p === "~") return HOME;
-  if (p.startsWith("~/")) return HOME + p.slice(1);
-  return p;
-}
 
 function isUnderHome(path: string, cwd: string): string | null {
   const expanded = resolveHome(path);
@@ -19,13 +14,15 @@ function isUnderHome(path: string, cwd: string): string | null {
 }
 
 /**
- * Allow `find` when all search paths resolve to somewhere under $HOME.
+ * Allow `find` when all search paths resolve to somewhere under $HOME and stay
+ * clear of undeclared dot-prefixed directories (see `safe-dot-paths`) — without
+ * that second check, `find ~/.ssh` enumerates what `ls ~/.ssh` is refused.
  * Dangerous flags (-exec, -delete, -ok, -fprint*, etc.) are rejected at the
  * AST level. Pipelines must consist only of safe filters.
  */
 const allowBashFind: Policy = {
   name: "Allow bash find",
-  description: "Permits find commands when all search paths are under $HOME",
+  description: "Permits find commands when all search paths are under $HOME and clear of undeclared dot-prefixed directories",
   action: "allow",
   handler: async (call) => {
     if (call.tool !== "Bash") return;
@@ -72,6 +69,8 @@ const allowBashFind: Policy = {
     if (paths.length === 0) {
       return isUnderHome(call.context.cwd, call.context.cwd) ? true : undefined;
     }
+
+    if (paths.some((p) => hasUnsafeDotSegment(p, call.context.cwd))) return;
 
     const allUnderHome = paths.every((p) => isUnderHome(p, call.context.cwd) !== null);
     return allUnderHome ? true : undefined;

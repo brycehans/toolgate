@@ -1,4 +1,3 @@
-import { homedir } from "node:os";
 import type { Policy } from "../src";
 import {
   parseShell,
@@ -7,36 +6,15 @@ import {
   isSafeFilter,
   type Stmt,
 } from "./parse-bash-ast";
-
-const HOME = homedir();
-
-function resolveHome(p: string): string {
-  if (p === "~") return HOME;
-  if (p.startsWith("~/")) return HOME + p.slice(1);
-  return p;
-}
-
-/**
- * Returns true if the path contains any segment starting with `.` other than
- * `.` (cwd) or `..` (parent). Listing dot-prefixed dirs (`~/.ssh`, `.aws`,
- * `.gnupg`, project `.env` siblings, etc.) tends to reveal secrets or
- * tooling state the user hasn't opted into sharing.
- */
-function hasDotPrefixedSegment(path: string): boolean {
-  const expanded = resolveHome(path);
-  for (const seg of expanded.split("/")) {
-    if (seg === "" || seg === "." || seg === "..") continue;
-    if (seg.startsWith(".")) return true;
-  }
-  return false;
-}
+import { hasUnsafeDotSegment } from "./safe-dot-paths";
 
 /**
  * Validate a single statement as a safe `ls` (optionally piped through safe
  * filters): first command must be `ls`, every downstream pipe segment must be
- * a safe filter, and no listed path may contain a dot-prefixed segment.
+ * a safe filter, and no listed path may reach into an undeclared dot-prefixed
+ * directory.
  */
-function isAllowableLsStmt(stmt: Stmt): boolean {
+function isAllowableLsStmt(stmt: Stmt, cwd: string): boolean {
   if (stmt.Background || stmt.Negated) return false;
 
   const cmds = getPipelineCommands(stmt);
@@ -51,15 +29,16 @@ function isAllowableLsStmt(stmt: Stmt): boolean {
   }
 
   const paths = tokens.slice(1).filter((t) => !t.startsWith("-"));
-  if (paths.some(hasDotPrefixedSegment)) return false;
+  if (paths.some((p) => hasUnsafeDotSegment(p, cwd))) return false;
 
   return true;
 }
 
 /**
- * Allow `ls` against any path that contains no dot-prefixed segments. The
- * AST parser blocks command substitution, redirects to non-/dev targets,
- * backgrounding, and chaining. Pipelines must consist only of safe filters.
+ * Allow `ls` against any path that stays clear of undeclared dot-prefixed
+ * directories (see `safe-dot-paths`). The AST parser blocks command
+ * substitution, redirects to non-/dev targets, backgrounding, and chaining.
+ * Pipelines must consist only of safe filters.
  *
  * A `;`-separated sequence (e.g. `ls a; ls b`) is allowed when EVERY statement
  * is independently a safe `ls`. Each `ls` is a side-effect-free read with no
@@ -70,7 +49,7 @@ function isAllowableLsStmt(stmt: Stmt): boolean {
  */
 const allowLs: Policy = {
   name: "Allow ls",
-  description: "Permits ls (or ;-separated ls sequences) against paths with no dot-prefixed segments, optionally piped through safe filters",
+  description: "Permits ls (or ;-separated ls sequences) against paths clear of undeclared dot-prefixed directories, optionally piped through safe filters",
   action: "allow",
   handler: async (call) => {
     if (call.tool !== "Bash") return;
@@ -80,7 +59,7 @@ const allowLs: Policy = {
     if (!ast || ast.Stmts.length === 0) return;
 
     for (const stmt of ast.Stmts) {
-      if (!isAllowableLsStmt(stmt)) return;
+      if (!isAllowableLsStmt(stmt, call.context.cwd)) return;
     }
 
     return true;

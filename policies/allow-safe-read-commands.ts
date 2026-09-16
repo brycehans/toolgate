@@ -1,8 +1,8 @@
 import { resolve } from "node:path";
-import { homedir } from "node:os";
 import { isWithinProject, type Policy } from "../src";
 import { parseShell, getPipelineCommands, getArgs, isSafeFilter, wordToString, Op } from "./parse-bash-ast";
 import type { Stmt } from "./parse-bash-ast";
+import { hasUnsafeDotSegment, resolveHome } from "./safe-dot-paths";
 
 /**
  * Read-only commands safe to run standalone on files within the project.
@@ -23,6 +23,9 @@ const SAFE_READ_COMMANDS = new Set([
   "jq",
   "fx",
   "sed",
+  "grep",
+  "egrep",
+  "fgrep",
 ]);
 
 /**
@@ -116,39 +119,6 @@ function getStdinRedirectPaths(stmt: Stmt): string[] {
   return paths;
 }
 
-const HOME = homedir();
-
-/**
- * Expand a leading `~`/`~/` or `$HOME`/`${HOME}` to the real home directory.
- * Without this, a token like `~/.aws/credentials` is treated as a literal
- * relative path and `resolve(cwd, "~/.aws/credentials")` lands *inside* the
- * project — so the containment check wrongly passes while the shell would
- * expand `~` to $HOME at runtime and read the real file. (Mirrors allow-ls.)
- */
-function resolveHome(p: string): string {
-  if (p === "~") return HOME;
-  if (p.startsWith("~/")) return HOME + p.slice(1);
-  if (p === "$HOME" || p === "${HOME}") return HOME;
-  if (p.startsWith("$HOME/")) return HOME + p.slice(5);
-  if (p.startsWith("${HOME}/")) return HOME + p.slice(7);
-  return p;
-}
-
-/**
- * Returns true if any path segment starts with `.` (other than `.`/`..`).
- * Reading dot-prefixed files (`~/.ssh/id_rsa`, `.aws/credentials`, `.env`,
- * `.git/config`) tends to expose secrets or tooling state the user hasn't
- * opted into sharing, so these fall through to a prompt. (Mirrors allow-ls.)
- */
-function hasDotPrefixedSegment(path: string): boolean {
-  const expanded = resolveHome(path);
-  for (const seg of expanded.split("/")) {
-    if (seg === "" || seg === "." || seg === "..") continue;
-    if (seg.startsWith(".")) return true;
-  }
-  return false;
-}
-
 function isInProject(path: string, cwd: string, context: { projectRoot: string; additionalDirs: string[] }): boolean {
   const resolved = resolve(cwd, resolveHome(path));
   return isWithinProject(resolved, context);
@@ -196,9 +166,10 @@ const allowSafeReadCommands: Policy = {
     const redirectPaths = getStdinRedirectPaths(ast.Stmts[0]);
     const paths = [...positionalPaths, ...redirectPaths];
 
-    // Reject reads of dot-prefixed files (secrets/tooling state) — even inside
-    // the project. Catches `cat ~/.aws/credentials`, `cat .env`, `head .git/config`.
-    if (paths.some(hasDotPrefixedSegment)) return;
+    // Reject reads of undeclared dot-prefixed files (secrets/tooling state) —
+    // even inside the project. Catches `cat ~/.aws/credentials`, `cat .env`,
+    // `head .git/config`.
+    if (paths.some((p) => hasUnsafeDotSegment(p, call.context.cwd))) return;
 
     // No file args — allowed only if cwd is in project
     if (paths.length === 0) {

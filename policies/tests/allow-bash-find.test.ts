@@ -62,6 +62,29 @@ describe("allow-bash-find", () => {
     }
   });
 
+  describe("rejects find into undeclared dot-prefixed directories", () => {
+    const rejected = [
+      "find ~/.ssh",
+      "find ~/.ssh -type f",
+      `find ${HOME}/.aws`,
+      `find ${HOME}/.gnupg -name '*.gpg'`,
+      "find src/.cache",
+      `find ${PROJECT}/.git -name 'config'`,
+    ];
+
+    for (const cmd of rejected) {
+      it(`rejects: ${cmd}`, async () => {
+        const result = await run(bash(cmd));
+        expect(result.verdict).toBe(NEXT);
+      });
+    }
+
+    it("closes the gap that let find enumerate what ls is refused", async () => {
+      const result = await run(bash(`find ${HOME}/.ssh -type f`));
+      expect(result.verdict).toBe(NEXT);
+    });
+  });
+
   describe("rejects bare find when cwd is outside $HOME", () => {
     it("rejects find in /tmp", async () => {
       const result = await run(bash("find", "/tmp"));
