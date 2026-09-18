@@ -111,6 +111,25 @@ describe("allow-git-local-repo", () => {
     }
   });
 
+  describe("refuses anything whose subcommand it cannot identify", () => {
+    // `isDestructiveGit` reads tokens[1] as the subcommand, so a git global
+    // option in that slot would hide the real one and hand back "not
+    // destructive" for commands that are.
+    const blocked = [
+      "git --no-pager reset --hard HEAD~50",
+      "git -c diff.external=/usr/bin/whoami diff HEAD~1",
+      "git --git-dir=/etc/other clean -fd",
+    ];
+
+    for (const cmd of blocked) {
+      it(`passes through: ${cmd}`, async () => {
+        const root = `/tmp/local-globalflag-${callCount++}`;
+        const result = await run(bash(cmd, root));
+        expect(result.verdict).toBe(NEXT);
+      });
+    }
+  });
+
   describe("allows safe restore variants", () => {
     it("allows git restore --staged", async () => {
       const root = `/tmp/local-staged-${callCount++}`;

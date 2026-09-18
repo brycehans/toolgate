@@ -72,6 +72,11 @@ const allowGitLocalRepo: Policy = {
     if (!tokens) return;
     if (tokens[0] !== "git") return;
 
+    // `isDestructiveGit` reads tokens[1] as the subcommand, which a git global
+    // option would displace — see allow-non-destructive-git for why this fails
+    // closed instead of skipping past the flag.
+    if (!tokens[1] || tokens[1].startsWith("-")) return;
+
     const projectRoot = call.context.projectRoot;
     if (!projectRoot) return;
 

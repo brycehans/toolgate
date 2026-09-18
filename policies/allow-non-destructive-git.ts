@@ -23,6 +23,8 @@ const DESTRUCTIVE_GIT = new Set([
   "bisect",
   "submodule",
   "worktree", // handled by allow-git-worktree with finer control
+  "config", // --global/--system rewrite state outside the repo
+  "bundle", // `bundle create <file>` writes to an arbitrary path
 ]);
 
 /** Flags on otherwise-safe subcommands that make them destructive. */
@@ -62,6 +64,14 @@ const allowNonDestructiveGit: Policy = {
 
     const sub = tokens[1];
     if (!sub) return;
+
+    // A git *global* option (`-c`, `--no-pager`, `--git-dir=`) occupies the
+    // subcommand slot, so every check below would inspect the flag instead of
+    // the subcommand and wave the real one through. Fail closed rather than
+    // skipping past it: `-c` can run arbitrary commands via
+    // `diff.external`/`core.sshCommand`, and `--git-dir`/`--work-tree`
+    // redirect which repo is touched — both need review in their own right.
+    if (sub.startsWith("-")) return;
 
     if (DESTRUCTIVE_GIT.has(sub)) return;
 

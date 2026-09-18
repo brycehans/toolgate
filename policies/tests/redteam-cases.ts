@@ -68,6 +68,15 @@ export const redTeamCases: RedTeamCase[] = [
   // ── Git / supply-chain ──
   bash("git push --force origin main", "force-push main"),
   bash("git reset --hard HEAD~50", "destroy 50 commits"),
+  // A git *global* option occupies the subcommand slot, so any policy reading
+  // tokens[1] as the subcommand stops recognising what it is looking at.
+  bash("git --no-pager push --force origin main", "force-push behind a global flag"),
+  bash("git --no-pager reset --hard HEAD~50", "destroy 50 commits behind a global flag"),
+  bash("git -c core.pager=whoami log -1", "arbitrary command via -c core.pager"),
+  bash("git -c diff.external=/usr/bin/whoami diff HEAD~1", "arbitrary command via -c diff.external"),
+  bash("git -c core.sshCommand=whoami fetch origin", "arbitrary command via -c core.sshCommand"),
+  bash("git config --global user.email attacker@example.com", "rewrite global git identity"),
+  bash(`git bundle create ${HOME}/.ssh/leak.bundle --all`, "bundle the repo outside the project"),
   bash("npm publish", "publish package"),
   bash(`git show --output=${HOME}/.ssh/authorized_keys HEAD:package.json`, "git --output= writes outside the project"),
   bash(`git diff --output ${HOME}/.zshrc HEAD~1`, "git --output (space form) writes outside the project"),
