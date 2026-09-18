@@ -20,6 +20,7 @@ import allowBunTest from "./allow-bun-test";
 import allowGitAdd from "./allow-git-add";
 import allowGitDiff from "./allow-git-diff";
 import allowGitLog from "./allow-git-log";
+import allowGitReadToFile from "./allow-git-read-to-file";
 import allowGitStatus from "./allow-git-status";
 import allowGrepInProject from "./allow-grep-in-project";
 import allowLs from "./allow-ls";
@@ -97,6 +98,7 @@ export const builtinPolicies = [
   allowGitAdd,
   allowGitDiff,
   allowGitLog,
+  allowGitReadToFile,
   allowGitStatus,
   allowGrepInProject,
   allowLs,
