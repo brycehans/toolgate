@@ -19,6 +19,7 @@ import redirectPlansToProject from "./redirect-plans-to-project";
 import allowBunTest from "./allow-bun-test";
 import allowGitAdd from "./allow-git-add";
 import allowGitDiff from "./allow-git-diff";
+import allowGitFetch from "./allow-git-fetch";
 import allowGitLog from "./allow-git-log";
 import allowGitReadToFile from "./allow-git-read-to-file";
 import allowGitStatus from "./allow-git-status";
@@ -123,6 +124,7 @@ export const builtinPolicies = [
   allowGitCheckoutB,
   allowGitCommit,
   allowGitStash,
+  allowGitFetch,
   allowGitLocalRepo,
   allowSafeReadCommands,
   allowPureAndChains,
