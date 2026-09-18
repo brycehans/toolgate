@@ -1,6 +1,7 @@
 import denyGitAddAndCommit from "./deny-git-add-and-commit";
 import denyWritesOutsideProject from "./deny-writes-outside-project";
 import denyGitDashC from "./deny-git-dash-c";
+import denyGitOutputFlag from "./deny-git-output-flag";
 import allowBashGrepInProject from "./allow-bash-grep-in-project";
 import denyCdChained from "./deny-cd-chained";
 import denyGitChained from "./deny-git-chained";
@@ -80,6 +81,7 @@ export const builtinPolicies = [
   redirectPythonJsonToFx,
   denyWritesOutsideProject,
   denyGitDashC,
+  denyGitOutputFlag,
   denyCdChained,
   denyGitChained,
   denyGhHeredoc,
