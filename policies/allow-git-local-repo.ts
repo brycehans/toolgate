@@ -15,8 +15,11 @@ async function isLocalRepo(projectRoot: string): Promise<boolean> {
       stderr: "pipe",
     });
     const output = await new Response(proc.stdout).text();
-    await proc.exited;
-    const local = output.trim() === "";
+    const exitCode = await proc.exited;
+    // A directory that is not a repo at all fails on stderr with an empty
+    // stdout — indistinguishable from a repo with no remotes unless the exit
+    // code is checked, and treating it as local blanket-allows git there.
+    const local = exitCode === 0 && output.trim() === "";
     remoteCache.set(projectRoot, local);
     return local;
   } catch {
