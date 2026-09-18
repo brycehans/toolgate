@@ -14,8 +14,7 @@ function bash(command: string): ToolCall {
 
 describe("allow-non-destructive-git", () => {
   describe("refuses anything whose subcommand it cannot identify", () => {
-    // This policy is a denylist — an unrecognised subcommand is ALLOWED. A git
-    // global option sits in the subcommand slot, so failing to notice one
+    // A git global option sits in the subcommand slot, so failing to notice one
     // waves the real subcommand through unexamined.
     const passed = [
       "git --no-pager push --force origin main",
@@ -41,6 +40,32 @@ describe("allow-non-destructive-git", () => {
       "git config --global user.email attacker@example.com",
       "git config --system core.pager evil",
       "git bundle create /home/user/.ssh/leak.bundle --all",
+      "git format-patch -o /home/user/.ssh HEAD~1",
+      "git clone https://example.com/x.git /home/user/.ssh/x",
+      "git merge-file --union /home/user/.ssh/authorized_keys /dev/null /dev/null",
+      "git archive --output=/home/user/.ssh/out.tar HEAD",
+    ];
+
+    for (const cmd of passed) {
+      it(`passes through: ${cmd}`, async () => {
+        const result = await run(bash(cmd));
+        expect(result.verdict).toBe(NEXT);
+      });
+    }
+  });
+
+  describe("refuses subcommands that discard uncommitted work", () => {
+    // `checkout <path>` overwrites the working tree from the index. Naming the
+    // path rather than `.` makes it no less destructive.
+    const passed = [
+      "git checkout -- src/app.ts",
+      "git checkout --theirs -- src/app.ts",
+      "git checkout 61c8bde -- src/app.ts",
+      "git checkout -B main origin/main",
+      "git checkout main",
+      "git restore src/app.ts",
+      "git restore --staged src/app.ts",
+      "git merge-tree --write-tree main HEAD",
     ];
 
     for (const cmd of passed) {
@@ -57,7 +82,6 @@ describe("allow-non-destructive-git", () => {
       "git reset --hard HEAD~50",
       "git clean -fdx",
       "git rebase main",
-      "git restore src/app.ts",
       "git branch -D feature",
     ];
 
@@ -69,14 +93,66 @@ describe("allow-non-destructive-git", () => {
     }
   });
 
-  describe("still allows ordinary read-only git", () => {
+  describe("refuses read-only subcommands used to execute a program", () => {
+    // `git grep -O<cmd>` hands every matched filename to <cmd> and runs it —
+    // the same escape as `-c diff.external`, reachable without a TTY.
+    const passed = [
+      "git grep -O/usr/bin/whoami pattern",
+      "git grep -O /usr/bin/whoami pattern",
+      "git grep --open-files-in-pager=/usr/bin/whoami pattern",
+      "git grep --open-files-in-pager /usr/bin/whoami pattern",
+    ];
+
+    for (const cmd of passed) {
+      it(`passes through: ${cmd}`, async () => {
+        const result = await run(bash(cmd));
+        expect(result.verdict).toBe(NEXT);
+      });
+    }
+  });
+
+  describe("refuses git remote used to rewrite remotes", () => {
+    const passed = [
+      "git remote add evil https://example.com/x.git",
+      "git remote set-url origin https://example.com/x.git",
+      "git remote remove origin",
+      "git remote rename origin upstream",
+      "git remote prune origin",
+      "git remote set-head origin main",
+    ];
+
+    for (const cmd of passed) {
+      it(`passes through: ${cmd}`, async () => {
+        const result = await run(bash(cmd));
+        expect(result.verdict).toBe(NEXT);
+      });
+    }
+  });
+
+  describe("allows read-only inspection", () => {
     const allowed = [
       "git status",
       "git log --oneline -20",
       "git diff HEAD~1",
       "git show HEAD:package.json",
-      "git fetch origin",
-      "git restore --staged src/app.ts",
+      "git grep -n pattern origin/master -- '*.ts'",
+      "git ls-tree -r --name-only origin/master",
+      "git ls-files src/",
+      "git ls-remote --heads origin",
+      "git for-each-ref --sort=-committerdate refs/remotes/origin/",
+      "git show-ref --verify refs/heads/main",
+      "git rev-parse --abbrev-ref HEAD",
+      "git rev-list --count HEAD",
+      "git merge-base main HEAD",
+      "git describe --tags",
+      "git blame src/app.ts",
+      "git cat-file -p HEAD",
+      "git shortlog -sn",
+      "git diff-tree --no-commit-id --name-only -r HEAD",
+      "git remote",
+      "git remote -v",
+      "git remote show origin",
+      "git remote get-url origin",
     ];
 
     for (const cmd of allowed) {
@@ -85,6 +161,18 @@ describe("allow-non-destructive-git", () => {
         expect(result.verdict).toBe(ALLOW);
       });
     }
+  });
+
+  it("allows read-only inspection piped through a safe filter", async () => {
+    const result = await run(bash("git ls-tree -r --name-only origin/master | head -40"));
+    expect(result.verdict).toBe(ALLOW);
+  });
+
+  it("passes through a subcommand nobody enumerated", async () => {
+    // The point of the inversion: an unknown subcommand prompts rather than
+    // being waved through because nobody thought to deny it.
+    const result = await run(bash("git notes add -m hello HEAD"));
+    expect(result.verdict).toBe(NEXT);
   });
 
   it("passes through non-Bash tools", async () => {

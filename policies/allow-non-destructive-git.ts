@@ -2,60 +2,62 @@ import type { Policy } from "../src";
 import { safeBashCommandOrPipeline } from "./parse-bash-ast";
 
 /**
- * Git subcommands that are destructive or mutate remote state.
- * Everything NOT in this set falls through to allow().
+ * Git subcommands that only read repository state. Everything NOT in this set
+ * falls through to a prompt.
+ *
+ * Mutating subcommands are not listed here even when they are routinely safe —
+ * `add`, `commit`, `stash`, `worktree`, `checkout -b` and `fetch` each have
+ * their own policy, which is where the argument for allowing them belongs.
  */
-const DESTRUCTIVE_GIT = new Set([
-  "push",
-  "reset",
-  "clean",
-  "rebase",
-  "merge",
-  "cherry-pick",
-  "revert",
-  "rm",
-  "mv",
-  "filter-branch",
-  "replace",
-  "gc",
-  "prune",
-  "reflog",
-  "bisect",
-  "submodule",
-  "worktree", // handled by allow-git-worktree with finer control
-  "config", // --global/--system rewrite state outside the repo
-  "bundle", // `bundle create <file>` writes to an arbitrary path
+const READ_ONLY_GIT = new Set([
+  "status",
+  "log",
+  "show",
+  "diff",
+  "grep",
+  "blame",
+  "ls-tree",
+  "ls-files",
+  "ls-remote",
+  "for-each-ref",
+  "show-ref",
+  "rev-parse",
+  "rev-list",
+  "merge-base",
+  "name-rev",
+  "describe",
+  "shortlog",
+  "cat-file",
+  "diff-tree",
+  "diff-files",
+  "diff-index",
+  "remote",
 ]);
 
-/** Flags on otherwise-safe subcommands that make them destructive. */
-function hasDestructiveFlags(sub: string, rest: string[]): boolean {
-  if (sub === "checkout" && rest.includes(".")) return true;
-  if (sub === "checkout" && rest.includes("--")) {
-    const afterDash = rest.slice(rest.indexOf("--") + 1);
-    if (afterDash.includes(".")) return true;
+/** `git remote` arguments that list remotes rather than rewriting them. */
+const READ_ONLY_REMOTE_ARGS = new Set(["-v", "--verbose", "show", "get-url"]);
+
+/** Uses of a read-only subcommand that are not, in fact, read-only. */
+function isUnsafeUse(sub: string, rest: string[]): boolean {
+  // `git grep -O<cmd>` runs <cmd> on every matched file — the same arbitrary
+  // execution escape as `-c diff.external`, and it needs no TTY.
+  if (sub === "grep") {
+    return rest.some(
+      (t) => t.startsWith("-O") || t.startsWith("--open-files-in-pager")
+    );
   }
-  if (sub === "restore" && !rest.includes("--staged")) return true;
-  if (sub === "stash" && (rest.includes("drop") || rest.includes("clear")))
-    return true;
-  if (sub === "branch") {
-    if (
-      rest.some((t) =>
-        ["-d", "-D", "--delete", "-m", "-M", "--move", "-c", "-C", "--copy", "-f", "--force"].includes(t)
-      )
-    )
-      return true;
+
+  if (sub === "remote") {
+    return rest.length > 0 && !READ_ONLY_REMOTE_ARGS.has(rest[0]!);
   }
-  if (sub === "tag") {
-    if (rest.some((t) => ["-d", "--delete", "-f", "--force"].includes(t)))
-      return true;
-  }
+
   return false;
 }
 
 const allowNonDestructiveGit: Policy = {
   name: "Allow non-destructive git",
   description:
-    "Auto-approves git commands that don't mutate remote state or discard uncommitted work",
+    "Auto-approves git subcommands that only read repository state; anything else prompts",
   action: "allow",
   handler: async (call) => {
     const tokens = await safeBashCommandOrPipeline(call);
@@ -73,10 +75,9 @@ const allowNonDestructiveGit: Policy = {
     // redirect which repo is touched — both need review in their own right.
     if (sub.startsWith("-")) return;
 
-    if (DESTRUCTIVE_GIT.has(sub)) return;
+    if (!READ_ONLY_GIT.has(sub)) return;
 
-    const rest = tokens.slice(2);
-    if (hasDestructiveFlags(sub, rest)) return;
+    if (isUnsafeUse(sub, tokens.slice(2))) return;
 
     return true;
   },
