@@ -9,7 +9,7 @@ import { safeBashCommandOrPipeline } from "./parse-bash-ast";
  * `add`, `commit`, `stash`, `worktree`, `checkout -b` and `fetch` each have
  * their own policy, which is where the argument for allowing them belongs.
  */
-const READ_ONLY_GIT = new Set([
+export const READ_ONLY_GIT = new Set([
   "status",
   "log",
   "show",
@@ -38,7 +38,7 @@ const READ_ONLY_GIT = new Set([
 const READ_ONLY_REMOTE_ARGS = new Set(["-v", "--verbose", "show", "get-url"]);
 
 /** Uses of a read-only subcommand that are not, in fact, read-only. */
-function isUnsafeUse(sub: string, rest: string[]): boolean {
+export function isUnsafeUse(sub: string, rest: string[]): boolean {
   // `git grep -O<cmd>` runs <cmd> on every matched file — the same arbitrary
   // execution escape as `-c diff.external`, and it needs no TTY.
   if (sub === "grep") {

@@ -71,6 +71,7 @@ import allowWhich from "./allow-which";
 import allowVersionProbes from "./allow-version-probes";
 import allowDate from "./allow-date";
 import allowNonDestructiveGit from "./allow-non-destructive-git";
+import allowGitDirFlag from "./allow-git-dir-flag";
 import allowGhIssuePr from "./allow-gh-issue-pr";
 import allowAwsCli from "./allow-aws-cli";
 import allowBrew from "./allow-brew";
@@ -152,6 +153,7 @@ export const builtinPolicies = [
   allowVersionProbes,
   allowDate,
   allowNonDestructiveGit,
+  allowGitDirFlag,
   allowAwsCli,
   allowBrew,
   allowToolgateTest,
