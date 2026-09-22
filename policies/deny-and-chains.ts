@@ -12,7 +12,7 @@ import {
 
 const ENV_SETTERS = new Set(["eval", "source", ".", "export"]);
 
-const STEERING_MESSAGE = `Each side of \`&&\` becomes its own Bash call. Toolgate evaluates each independently — per-call audit entry, per-call permission cache, per-call policy specificity.
+const STEERING_MESSAGE = `Each side of \`&&\` or \`;\` becomes its own Bash call. Toolgate evaluates each independently — per-call audit entry, per-call permission cache, per-call policy specificity.
 
 Bad:  mkdir -p tmp && grep ... > tmp/file && wc -l tmp/file
 Good: mkdir -p tmp
@@ -76,25 +76,31 @@ function firstArg0OfLeaf(leaf: Stmt): string | null {
 }
 
 const denyAndChains: Policy = {
-  name: "Deny && chains",
+  name: "Deny chained commands",
   description:
-    "Denies `<cmd> && <cmd>` chains so each step is evaluated atomically. Exempts chains whose leaves include env-setters (eval/source/./export) whose effects must persist into subsequent leaves.",
+    "Denies `<cmd> && <cmd>` and `<cmd>; <cmd>` chains so each step is evaluated atomically. Exempts chains whose leaves include env-setters (eval/source/./export) whose effects must persist into subsequent leaves.",
   action: "deny",
   handler: async (call) => {
     if (call.tool !== "Bash") return;
     if (typeof call.args.command !== "string") return;
 
     const ast = await parseShell(call.args.command);
-    if (!ast || ast.Stmts.length !== 1) return;
+    if (!ast) return;
 
-    const stmt = ast.Stmts[0];
-    const cmd = stmt.Cmd;
-    if (!cmd || cmd.Type !== "BinaryCmd") return;
-    const bin = cmd as BinaryCmd;
-    if (bin.Op !== Op.And) return;
-
+    // `;`-separated commands surface as multiple top-level Stmts; `&&` surfaces
+    // as a single Stmt whose Cmd is a BinaryCmd. Walk every top-level Stmt,
+    // decomposing the ones that are `&&` chains, so `a && b; c` collapses to
+    // three leaves just like `a && b && c` would.
     const leaves: Stmt[] = [];
-    collectAndLeaves(bin, leaves);
+    for (const stmt of ast.Stmts) {
+      const cmd = stmt.Cmd;
+      if (!cmd) return;
+      if (cmd.Type === "BinaryCmd" && (cmd as BinaryCmd).Op === Op.And) {
+        collectAndLeaves(cmd as BinaryCmd, leaves);
+      } else {
+        leaves.push(stmt);
+      }
+    }
     if (leaves.length < 2) return;
 
     for (const leaf of leaves) {
