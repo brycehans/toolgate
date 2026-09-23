@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach } from 'bun:test'
 import { findConfigInDir, findAllConfigs, loadConfigs } from './config'
-import { mkdtemp, rm, writeFile, mkdir } from 'fs/promises'
+import { mkdtemp, rm, writeFile, mkdir, symlink } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
@@ -114,6 +114,35 @@ describe('findAllConfigs', () => {
     await mkdir(child, { recursive: true })
 
     expect(findAllConfigs(child)).toEqual([parentConfig])
+  })
+
+  it('dedupes a symlinked config against its real file, keeping the innermost', async () => {
+    // Real config in the child; parent's .claude/ holds a symlink to it — the
+    // "one file in the project, symlinked at $HOME level for global reach" setup.
+    const child = join(tempDir, 'child')
+    await mkdir(child)
+    const realConfig = join(child, 'toolgate.config.ts')
+    await writeFile(realConfig, 'export default []')
+
+    await mkdir(join(tempDir, '.claude'), { recursive: true })
+    await symlink(realConfig, join(tempDir, '.claude', 'toolgate.config.ts'))
+
+    expect(findAllConfigs(child)).toEqual([realConfig])
+  })
+
+  it('still finds a symlinked config when the walk never passes the real file', async () => {
+    const elsewhere = join(tempDir, 'elsewhere')
+    await mkdir(elsewhere)
+    const realConfig = join(elsewhere, 'toolgate.config.ts')
+    await writeFile(realConfig, 'export default []')
+
+    const linkPath = join(tempDir, 'toolgate.config.ts')
+    await symlink(realConfig, linkPath)
+
+    const child = join(tempDir, 'child')
+    await mkdir(child)
+
+    expect(findAllConfigs(child)).toEqual([linkPath])
   })
 
   it('orders local before shared at each level when walking up', async () => {

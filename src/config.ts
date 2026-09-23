@@ -1,4 +1,4 @@
-import { existsSync } from 'fs'
+import { existsSync, realpathSync } from 'fs'
 import { homedir } from 'os'
 import { join, dirname } from 'path'
 import type { Policy } from './types'
@@ -32,14 +32,27 @@ export function findConfigInDir(dir: string): string[] {
  * Walk from cwd up to $HOME, collecting all toolgate configs.
  * Returns innermost first (most specific takes priority); within a
  * directory, local configs come before shared ones.
+ *
+ * Deduped by realpath so a symlinked config (e.g. ~/.claude/toolgate.config.ts
+ * pointing at a project checkout, to make it load for every cwd under home)
+ * doesn't load its policies twice when the walk also passes the real file.
  */
 export function findAllConfigs(cwd: string): string[] {
   const home = homedir()
   const configs: string[] = []
+  const seen = new Set<string>()
   let dir = cwd
 
   while (true) {
-    configs.push(...findConfigInDir(dir))
+    for (const config of findConfigInDir(dir)) {
+      let real = config
+      try {
+        real = realpathSync(config)
+      } catch {}
+      if (seen.has(real)) continue
+      seen.add(real)
+      configs.push(config)
+    }
 
     if (dir === home || dir === '/') break
     const parent = dirname(dir)
