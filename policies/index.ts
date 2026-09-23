@@ -75,6 +75,8 @@ import allowGitDirFlag from "./allow-git-dir-flag";
 import allowGhIssuePr from "./allow-gh-issue-pr";
 import allowAwsCli from "./allow-aws-cli";
 import allowBrew from "./allow-brew";
+import allowToolgateList from "./allow-toolgate-list";
+import allowToolgateLogs from "./allow-toolgate-logs";
 import allowToolgateTest from "./allow-toolgate-test";
 import allowMemoryCrud from "./allow-memory-crud";
 
@@ -156,6 +158,8 @@ export const builtinPolicies = [
   allowGitDirFlag,
   allowAwsCli,
   allowBrew,
+  allowToolgateList,
+  allowToolgateLogs,
   allowToolgateTest,
   allowMemoryCrud,
 ];
