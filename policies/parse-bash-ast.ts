@@ -1,18 +1,24 @@
 import type { ToolCall } from "../src";
 
-// Op code constants from shfmt AST
+// Op codes from the shfmt AST. The JSON encoding changed between releases:
+// shfmt 3.14 serialises each operator as its literal token, 3.13 and earlier
+// as the numeric syntax.Token value. parseShell normalises the numeric form
+// (see LEGACY_OPS) so these string constants match under either. Comparing
+// against the wrong encoding silently disables every `Op` check below:
+// pipelines and redirects stop matching, so allow policies bail out and deny
+// policies never fire.
 export const Op = {
-  And: 11,
-  Or: 12,
-  Pipe: 13,
-  PipeAll: 14,
-  RdrOut: 63,
-  AppOut: 64,
-  RdrIn: 65,
-  DplOut: 68,
-  RdrAll: 74,
-  Hdoc: 71,
-  DashHdoc: 72,
+  And: "&&",
+  Or: "||",
+  Pipe: "|",
+  PipeAll: "|&",
+  RdrOut: ">",
+  AppOut: ">>",
+  RdrIn: "<",
+  DplOut: ">&",
+  RdrAll: "&>",
+  Hdoc: "<<",
+  DashHdoc: "<<-",
 } as const;
 
 // AST Types
@@ -38,7 +44,7 @@ export interface CallExpr {
 
 export interface BinaryCmd {
   Type: "BinaryCmd";
-  Op: number;
+  Op: string;
   X: Stmt;
   Y: Stmt;
 }
@@ -82,7 +88,7 @@ export interface ParamExp {
 }
 
 export interface Redirect {
-  Op: number;
+  Op: string;
   N: { Value: string } | null;
   Word: Word;
 }
@@ -138,10 +144,60 @@ export async function parseShell(
     const output = await new Response(proc.stdout).text();
     const exitCode = await proc.exited;
     if (exitCode !== 0) return null;
-    return JSON.parse(output) as ShellFile;
+    return normalizeOps(JSON.parse(output)) as ShellFile;
   } catch {
     return null;
   }
+}
+
+/**
+ * Numeric syntax.Token values emitted by shfmt <= 3.13 for binary-command and
+ * redirect operators, mapped to the literal tokens 3.14 emits. Probed against
+ * shfmt 3.13.1, one operator per probe.
+ */
+const LEGACY_OPS: Record<number, string> = {
+  11: "&&",
+  12: "||",
+  13: "|",
+  14: "|&",
+  63: ">",
+  64: ">>",
+  65: "<",
+  66: "<>",
+  67: "<&",
+  68: ">&",
+  69: ">|",
+  71: "<<",
+  72: "<<-",
+  73: "<<<",
+  74: "&>",
+  76: "&>>",
+};
+
+function legacyOp(op: unknown): unknown {
+  return typeof op === "number" ? (LEGACY_OPS[op] ?? String(op)) : op;
+}
+
+/**
+ * Rewrite numeric BinaryCmd and Redirect `Op` values to their token strings, in
+ * place. Other node types (arithmetic, tests, parameter expansions) also carry
+ * an `Op` but nothing here compares them, so they are left untouched.
+ */
+export function normalizeOps(node: any): any {
+  if (Array.isArray(node)) {
+    for (const child of node) normalizeOps(child);
+    return node;
+  }
+  if (!node || typeof node !== "object") return node;
+
+  if (node.Type === "BinaryCmd") node.Op = legacyOp(node.Op);
+  if (Array.isArray(node.Redirs)) {
+    for (const r of node.Redirs) {
+      if (r && typeof r === "object") r.Op = legacyOp(r.Op);
+    }
+  }
+  for (const key in node) normalizeOps(node[key]);
+  return node;
 }
 
 // AST query helpers
@@ -285,7 +341,7 @@ export function hasUnsafeNodes(obj: any): boolean {
 }
 
 export interface RedirectInfo {
-  op: number;
+  op: string;
   target: string | null;
   fd: string | null;
 }

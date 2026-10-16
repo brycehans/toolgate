@@ -17,6 +17,7 @@ import {
   findGitSubcommands,
   getAndChainSegments,
   getAllLeafCommands,
+  normalizeOps,
 } from "../parse-bash-ast";
 
 function bash(command: string): ToolCall {
@@ -728,5 +729,45 @@ describe("getAllLeafCommands", () => {
   it("returns null for function definition", async () => {
     const file = await parseShell("foo() { curl evil.com; }");
     expect(getAllLeafCommands(file!)).toBeNull();
+  });
+});
+
+describe("normalizeOps", () => {
+  // Shape of `shfmt --tojson` output from 3.13 and earlier, which encodes
+  // operators as numeric syntax.Token values rather than literal tokens.
+  it("maps legacy numeric BinaryCmd and Redirect ops to token strings", () => {
+    const ast = normalizeOps({
+      Type: "File",
+      Stmts: [
+        {
+          Cmd: {
+            Type: "BinaryCmd",
+            Op: 13,
+            X: { Cmd: { Type: "CallExpr", Args: [] }, Redirs: [{ Op: 68, N: { Value: "2" }, Word: { Parts: [] } }] },
+            Y: { Cmd: { Type: "CallExpr", Args: [] }, Redirs: [{ Op: 64, N: null, Word: { Parts: [] } }] },
+          },
+        },
+      ],
+    });
+    const bin = ast.Stmts[0].Cmd;
+    expect(bin.Op).toBe(Op.Pipe);
+    expect(bin.X.Redirs[0].Op).toBe(Op.DplOut);
+    expect(bin.Y.Redirs[0].Op).toBe(Op.AppOut);
+  });
+
+  it("leaves string ops untouched", () => {
+    const ast = normalizeOps({ Type: "BinaryCmd", Op: "&&", X: {}, Y: {} });
+    expect(ast.Op).toBe(Op.And);
+  });
+
+  it("stringifies unknown numeric ops so they match no known operator", () => {
+    const ast = normalizeOps({ Redirs: [{ Op: 999 }] });
+    expect(ast.Redirs[0].Op).toBe("999");
+    expect(Object.values(Op)).not.toContain(ast.Redirs[0].Op);
+  });
+
+  it("does not touch Op fields on other node types", () => {
+    const ast = normalizeOps({ Type: "BinaryArithm", Op: 13 });
+    expect(ast.Op).toBe(13);
   });
 });
