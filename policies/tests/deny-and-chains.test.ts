@@ -42,6 +42,10 @@ describe("deny-and-chains", () => {
       "ls /a ; ls /b",
       "grep -c foo file1; grep -c bar file2",
       "a && b; c",
+      // A line break is a statement separator too.
+      "cmd1\ncmd2",
+      "ls /a\nls /b",
+      "a && b\nc",
     ];
     for (const cmd of cases) {
       it(`denies: ${cmd}`, async () => {

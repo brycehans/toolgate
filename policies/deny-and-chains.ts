@@ -12,7 +12,7 @@ import {
 
 const ENV_SETTERS = new Set(["eval", "source", ".", "export"]);
 
-const STEERING_MESSAGE = `Each side of \`&&\` or \`;\` becomes its own Bash call. Toolgate evaluates each independently — per-call audit entry, per-call permission cache, per-call policy specificity.
+const STEERING_MESSAGE = `Each side of \`&&\`, \`;\` or a line break becomes its own Bash call. Toolgate evaluates each independently — per-call audit entry, per-call permission cache, per-call policy specificity.
 
 Bad:  mkdir -p tmp && grep ... > tmp/file && wc -l tmp/file
 Good: mkdir -p tmp
@@ -78,7 +78,7 @@ function firstArg0OfLeaf(leaf: Stmt): string | null {
 const denyAndChains: Policy = {
   name: "Deny chained commands",
   description:
-    "Denies `<cmd> && <cmd>` and `<cmd>; <cmd>` chains so each step is evaluated atomically. Exempts chains whose leaves include env-setters (eval/source/./export) whose effects must persist into subsequent leaves.",
+    "Denies `<cmd> && <cmd>`, `<cmd>; <cmd>` and multi-line command sequences so each step is evaluated atomically. Exempts chains whose leaves include env-setters (eval/source/./export) whose effects must persist into subsequent leaves.",
   action: "deny",
   handler: async (call) => {
     if (call.tool !== "Bash") return;
@@ -87,7 +87,8 @@ const denyAndChains: Policy = {
     const ast = await parseShell(call.args.command);
     if (!ast) return;
 
-    // `;`-separated commands surface as multiple top-level Stmts; `&&` surfaces
+    // `;`- and newline-separated commands surface as multiple top-level Stmts
+    // (shfmt makes no distinction between the two); `&&` surfaces
     // as a single Stmt whose Cmd is a BinaryCmd. Walk every top-level Stmt,
     // decomposing the ones that are `&&` chains, so `a && b; c` collapses to
     // three leaves just like `a && b && c` would.

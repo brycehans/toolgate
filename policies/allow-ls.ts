@@ -40,27 +40,22 @@ function isAllowableLsStmt(stmt: Stmt, cwd: string): boolean {
  * substitution, redirects to non-/dev targets, backgrounding, and chaining.
  * Pipelines must consist only of safe filters.
  *
- * A `;`-separated sequence (e.g. `ls a; ls b`) is allowed when EVERY statement
- * is independently a safe `ls`. Each `ls` is a side-effect-free read with no
- * precondition on the others, so the `&&`-vs-`;` failure-propagation
- * distinction is moot — the same reasoning that lets `Allow pure command
- * chains` compose pure commands applies here. Any non-`ls` statement in the
- * sequence (e.g. `ls; echo pwned`) fails the whole match and falls through.
+ * Only a single statement is considered. `ls a; ls b` (or the same on two
+ * lines) is denied by `Deny chained commands` before any allow runs, so a
+ * multi-statement match here could never be reached.
  */
 const allowLs: Policy = {
   name: "Allow ls",
-  description: "Permits ls (or ;-separated ls sequences) against paths clear of undeclared dot-prefixed directories, optionally piped through safe filters",
+  description: "Permits ls against paths clear of undeclared dot-prefixed directories, optionally piped through safe filters",
   action: "allow",
   handler: async (call) => {
     if (call.tool !== "Bash") return;
     if (typeof call.args.command !== "string") return;
 
     const ast = await parseShell(call.args.command);
-    if (!ast || ast.Stmts.length === 0) return;
+    if (!ast || ast.Stmts.length !== 1) return;
 
-    for (const stmt of ast.Stmts) {
-      if (!isAllowableLsStmt(stmt, call.context.cwd)) return;
-    }
+    if (!isAllowableLsStmt(ast.Stmts[0], call.context.cwd)) return;
 
     return true;
   },
