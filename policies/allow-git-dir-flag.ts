@@ -1,3 +1,4 @@
+import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { isWithinProject, type Policy } from "../src";
 import { safeBashCommandOrPipeline } from "./parse-bash-ast";
@@ -11,6 +12,19 @@ import { READ_ONLY_GIT, isUnsafeUse } from "./allow-non-destructive-git";
  * once the redirected path is itself checked.
  */
 const REPO_REDIRECT_FLAGS = new Set(["--git-dir", "--work-tree"]);
+
+/**
+ * Follow symlinks so `--git-dir=./link` can't name an in-scope path that
+ * points outside it. A path that doesn't exist yet has no link to follow, and
+ * git will fail on it anyway, so the lexical resolution stands in.
+ */
+function realOrResolved(path: string): string {
+  try {
+    return realpathSync(path);
+  } catch {
+    return path;
+  }
+}
 
 interface Stripped {
   rest: string[];
@@ -31,6 +45,13 @@ function stripRepoRedirectFlags(
 ): Stripped | null {
   const rest = tokens.slice(1);
   let consumed = false;
+  // Compare real paths on both sides: resolving only the target would refuse
+  // legitimate paths whenever the project root itself sits under a symlink
+  // (macOS /var -> /private/var, a symlinked ~/Dev).
+  const scope = {
+    projectRoot: realOrResolved(context.projectRoot),
+    additionalDirs: context.additionalDirs.map(realOrResolved),
+  };
 
   while (rest.length > 0 && rest[0].startsWith("-")) {
     const tok = rest[0];
@@ -48,7 +69,7 @@ function stripRepoRedirectFlags(
       rest.splice(0, 2);
     }
 
-    if (!isWithinProject(resolve(cwd, resolveHome(value)), context)) return null;
+    if (!isWithinProject(realOrResolved(resolve(cwd, resolveHome(value))), scope)) return null;
     consumed = true;
   }
 

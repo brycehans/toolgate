@@ -1,4 +1,7 @@
-import { describe, expect, it } from "bun:test";
+import { afterAll, beforeAll, describe, expect, it } from "bun:test";
+import { mkdir, mkdtemp, rm, symlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowGitDirFlag from "../allow-git-dir-flag";
 
@@ -60,6 +63,7 @@ describe("allow-git-dir-flag", () => {
     const passed = [
       "git --git-dir=/home/user/project/sibling/.git push --force origin main",
       "git --git-dir=/home/user/project/sibling/.git grep -O/usr/bin/whoami pattern",
+      "git --git-dir=/home/user/project/sibling/.git diff --output=/Users/me/.zshrc",
     ];
 
     for (const cmd of passed) {
@@ -82,6 +86,44 @@ describe("allow-git-dir-flag", () => {
         expect(result.verdict).toBe(NEXT);
       });
     }
+  });
+
+  describe("follows symlinks before the scope check", () => {
+    let root: string;
+    let project: string;
+    let outside: string;
+
+    beforeAll(async () => {
+      root = await mkdtemp(join(tmpdir(), "toolgate-gitdir-"));
+      project = join(root, "project");
+      outside = join(root, "outside");
+      await mkdir(join(project, "sibling"), { recursive: true });
+      await mkdir(outside);
+      await symlink(outside, join(project, "escape"));
+    });
+
+    afterAll(async () => {
+      await rm(root, { recursive: true, force: true });
+    });
+
+    function inProject(command: string): ToolCall {
+      return {
+        tool: "Bash",
+        args: { command },
+        context: { cwd: project, env: {}, projectRoot: project, additionalDirs: [] },
+      };
+    }
+
+    it("refuses an in-project link that points outside", async () => {
+      const result = await run(inProject("git --git-dir=./escape status"));
+      expect(result.verdict).toBe(NEXT);
+    });
+
+    it("still allows a real in-project path when the project root is under a symlink", async () => {
+      // tmpdir() is itself a symlink on macOS (/var -> /private/var).
+      const result = await run(inProject("git --git-dir=./sibling status"));
+      expect(result.verdict).toBe(ALLOW);
+    });
   });
 
   it("passes through when no redirect flag is present", async () => {
