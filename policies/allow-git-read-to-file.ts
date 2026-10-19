@@ -46,7 +46,11 @@ const allowGitReadToFile: Policy = {
 
     for (const r of redirs) {
       if (r.Op !== Op.RdrOut && r.Op !== Op.AppOut) return;
-      if (wordToString(r.Word) === null) return;
+      const target = wordToString(r.Word);
+      if (target === null) return;
+      // deny-writes-outside-project's resolvePath returns null for a
+      // dash-prefixed target and skips the containment check.
+      if (target.startsWith("-")) return;
     }
 
     return true;

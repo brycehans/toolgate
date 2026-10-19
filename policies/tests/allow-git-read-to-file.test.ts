@@ -53,6 +53,11 @@ describe("allow-git-read-to-file", () => {
       "git show HEAD:package.json > $TARGET",
       "git show HEAD:package.json > $(cat /tmp/target)",
       "git show HEAD:package.json > ./tmp/`whoami`.txt",
+      // A dash-prefixed target is likewise skipped by the deny layer.
+      "git show HEAD:package.json > -out.txt",
+      "git diff >> --patch",
+      // --output writes past the redirect check entirely.
+      "git diff --output=/Users/me/.zshrc > ./tmp/p.patch",
     ];
 
     for (const cmd of passed) {
