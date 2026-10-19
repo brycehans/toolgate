@@ -1,11 +1,16 @@
-import { describe, expect, it } from "bun:test";
+import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { homedir } from "node:os";
 import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowBashGrepInProject from "../allow-bash-grep-in-project";
+import { setSafeDotPaths } from "../safe-dot-paths";
 
 const run = adaptHandler(allowBashGrepInProject.action!, allowBashGrepInProject.handler as any);
 
 const HOME = homedir();
+
+// The built-in default is empty; configs declare these via `safeDotPaths`.
+beforeAll(() => setSafeDotPaths(["~/Dev/brain/.system"]));
+afterAll(() => setSafeDotPaths([]));
 const PROJECT = `${HOME}/some-project`;
 
 function bash(command: string, cwd = PROJECT, projectRoot: string | null = PROJECT): ToolCall {

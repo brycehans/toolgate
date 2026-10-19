@@ -1,8 +1,9 @@
 import { existsSync, realpathSync } from 'fs'
 import { homedir } from 'os'
-import { join, dirname } from 'path'
+import { join, dirname, resolve } from 'path'
 import type { Policy } from './types'
 import { builtinPolicies } from '../policies'
+import { setSafeDotPaths } from '../policies/safe-dot-paths'
 
 const CONFIG_FILENAME = 'toolgate.config.ts'
 const LOCAL_CONFIG_FILENAME = 'toolgate.config.local.ts'
@@ -72,9 +73,19 @@ export async function loadConfigFile(path: string): Promise<Policy[]> {
   return policies
 }
 
+/**
+ * Load every config on the walk from cwd, then append the built-ins.
+ *
+ * Besides the default policy array, a config may export `disable` (policy
+ * names to drop) and `safeDotPaths` (dot-prefixed trees the read policies may
+ * enter; see policies/safe-dot-paths). Both accumulate across every config on
+ * the walk. Relative `safeDotPaths` entries resolve against the declaring
+ * config's directory.
+ */
 export async function loadConfigs(cwd: string): Promise<Policy[]> {
   const policies: Policy[] = []
   const disabled = new Set<string>()
+  const safeDotPaths: string[] = []
 
   for (const configPath of findAllConfigs(cwd)) {
     try {
@@ -84,11 +95,19 @@ export async function loadConfigs(cwd: string): Promise<Policy[]> {
       if (Array.isArray(mod.disable)) {
         for (const name of mod.disable) disabled.add(name)
       }
+      if (Array.isArray(mod.safeDotPaths)) {
+        for (const p of mod.safeDotPaths) {
+          if (typeof p !== 'string') continue
+          const isAnchored = p.startsWith('/') || p === '~' || p.startsWith('~/') || p.startsWith('$HOME') || p.startsWith('${HOME}')
+          safeDotPaths.push(isAnchored ? p : resolve(dirname(configPath), p))
+        }
+      }
     } catch (err) {
       console.error(`toolgate: failed to load config ${configPath}: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
 
+  setSafeDotPaths(safeDotPaths)
   policies.push(...builtinPolicies)
 
   return policies.filter(p => !disabled.has(p.name))

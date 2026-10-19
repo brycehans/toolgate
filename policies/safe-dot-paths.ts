@@ -21,14 +21,20 @@ export function resolveHome(p: string): string {
 
 /**
  * Dot-prefixed trees that hold working material rather than secrets, so the
- * dot-segment check below skips them. Machine-specific by nature — these are
- * the dot-paths this user actually reads, not a portable default.
+ * dot-segment check below skips them. Machine-specific by nature, so the
+ * built-in default is empty: configs declare their own with a named
+ * `safeDotPaths` export, which loadConfigs passes to setSafeDotPaths.
  */
-const SAFE_DOT_PATHS = [
-  "~/.bun/install/global/node_modules",
-  "~/.claude",
-  "~/Dev/brain/.system",
-].map(resolveHome);
+let SAFE_DOT_PATHS: string[] = [];
+
+/**
+ * Replace the declared safe dot-paths. Entries are absolute, or `~`/`$HOME`
+ * prefixed; loadConfigs resolves relative entries against the declaring
+ * config's directory before they get here.
+ */
+export function setSafeDotPaths(paths: string[]): void {
+  SAFE_DOT_PATHS = paths.map((p) => resolve(resolveHome(p)));
+}
 
 function hasDotSegment(path: string): boolean {
   for (const seg of path.split("/")) {

@@ -96,6 +96,14 @@ export const disable = ["Deny bash grep"];
 
 Names must match the policy's `name` field exactly; unknown names are ignored. Or use `toolgate disable` to toggle policies interactively (`--json` dumps the full policy state for debugging).
 
+The read policies refuse dot-prefixed paths (`~/.ssh`, `.env`) by default. To exempt trees you read routinely, export `safeDotPaths` from a personal config:
+
+```ts
+// ~/.claude/toolgate.config.local.ts
+export default [];
+export const safeDotPaths = ["~/.claude"];
+```
+
 ## Writing a policy
 
 A policy is an object with a `name`, a `description`, an `action` (`"allow"` or `"deny"`), and an async `handler`. The handler's return value is its verdict:

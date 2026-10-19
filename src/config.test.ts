@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach } from 'bun:test'
 import { findConfigInDir, findAllConfigs, loadConfigs } from './config'
+import { hasUnsafeDotSegment, setSafeDotPaths } from '../policies/safe-dot-paths'
 import { mkdtemp, rm, writeFile, mkdir, symlink } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
@@ -240,5 +241,49 @@ describe('loadConfigs', () => {
     await writeFile(join(tempDir, 'toolgate.config.ts'), 'export default []')
     const policies = await loadConfigs(tempDir)
     expect(policies.length).toBeGreaterThan(0)
+  })
+
+  describe('`safeDotPaths` export', () => {
+    afterEach(() => setSafeDotPaths([]))
+
+    it('collects entries from every config on the walk', async () => {
+      await writeFile(
+        join(tempDir, 'toolgate.config.ts'),
+        `export default []\nexport const safeDotPaths = ['~/.claude']`,
+      )
+      const child = join(tempDir, 'child')
+      await mkdir(child)
+      await writeFile(
+        join(child, 'toolgate.config.local.ts'),
+        `export default []\nexport const safeDotPaths = ['/opt/.cache']`,
+      )
+
+      await loadConfigs(child)
+      expect(hasUnsafeDotSegment('~/.claude', child)).toBe(false)
+      expect(hasUnsafeDotSegment('/opt/.cache/x', child)).toBe(false)
+      expect(hasUnsafeDotSegment('~/.ssh', child)).toBe(true)
+    })
+
+    it("resolves relative entries against the declaring config's directory", async () => {
+      await writeFile(
+        join(tempDir, 'toolgate.config.ts'),
+        `export default []\nexport const safeDotPaths = ['.notes']`,
+      )
+      const child = join(tempDir, 'child')
+      await mkdir(child)
+
+      await loadConfigs(child)
+      expect(hasUnsafeDotSegment(join(tempDir, '.notes', 'a.md'), child)).toBe(false)
+      // Not re-resolved against the cwd.
+      expect(hasUnsafeDotSegment(join(child, '.notes', 'a.md'), child)).toBe(true)
+    })
+
+    it('resets to empty when no config declares any', async () => {
+      setSafeDotPaths(['~/.claude'])
+      await writeFile(join(tempDir, 'toolgate.config.ts'), 'export default []')
+
+      await loadConfigs(tempDir)
+      expect(hasUnsafeDotSegment('~/.claude', tempDir)).toBe(true)
+    })
   })
 })
