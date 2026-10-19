@@ -395,7 +395,8 @@ export async function safeBashCommand(
   return getArgs(stmt);
 }
 
-function hasUnsafeRedirects(stmt: Stmt): boolean {
+/** Any redirect other than an fd dup (`2>&1`) or an fd-numbered write to /dev/null-style targets. */
+export function hasUnsafeRedirects(stmt: Stmt): boolean {
   if (stmt.Redirs) {
     for (const r of stmt.Redirs) {
       if (r.Op === Op.DplOut) continue;

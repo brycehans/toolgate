@@ -14,6 +14,44 @@ function isUnderHome(path: string, cwd: string): string | null {
 }
 
 /**
+ * find primaries and options that only select or print. Anything that runs a
+ * command (-exec, -ok, -execdir), deletes (-delete) or writes a file
+ * (-fprint*, -fls) is absent, so it fails the check.
+ */
+const FIND_SAFE_FLAGS = new Set([
+  "-print", "-print0", "-ls",
+  "-name", "-iname", "-path", "-ipath", "-regex", "-iregex",
+  "-type", "-size", "-empty", "-newer", "-perm", "-user", "-group",
+  "-mtime", "-atime", "-ctime", "-mmin", "-amin", "-cmin",
+  "-readable", "-writable", "-executable",
+  "-maxdepth", "-mindepth",
+  "-not", "-and", "-or", "-a", "-o", "!",
+  "-follow", "-xdev", "-mount", "-daystart",
+  "-true", "-false", "-prune",
+]);
+
+/**
+ * Validate a `find` argv and return its search roots (empty when find
+ * defaults to the cwd), or null if any flag is outside FIND_SAFE_FLAGS or the
+ * expression uses parentheses.
+ */
+export function findSearchRoots(tokens: string[]): string[] | null {
+  if (tokens[0] !== "find") return null;
+
+  for (const t of tokens.slice(1)) {
+    if (t.startsWith("-") && !FIND_SAFE_FLAGS.has(t)) return null;
+    if (t === "(" || t === ")" || t === "\\(" || t === "\\)") return null;
+  }
+
+  const roots: string[] = [];
+  for (const arg of tokens.slice(1)) {
+    if (arg.startsWith("-") || arg === "!" || arg === "(") break;
+    roots.push(arg);
+  }
+  return roots;
+}
+
+/**
  * Allow `find` when all search paths resolve to somewhere under $HOME and stay
  * clear of undeclared dot-prefixed directories (see `safe-dot-paths`) — without
  * that second check, `find ~/.ssh` enumerates what `ls ~/.ssh` is refused.
@@ -35,35 +73,13 @@ const allowBashFind: Policy = {
     if (!cmds) return;
 
     const tokens = getArgs(cmds[0]);
-    if (!tokens || tokens[0] !== "find") return;
+    if (!tokens) return;
+    const paths = findSearchRoots(tokens);
+    if (!paths) return;
 
     for (let i = 1; i < cmds.length; i++) {
       const args = getArgs(cmds[i]);
       if (!args || !isSafeFilter(args)) return;
-    }
-
-    const SAFE_FLAGS = new Set([
-      "-print", "-print0", "-ls",
-      "-name", "-iname", "-path", "-ipath", "-regex", "-iregex",
-      "-type", "-size", "-empty", "-newer", "-perm", "-user", "-group",
-      "-mtime", "-atime", "-ctime", "-mmin", "-amin", "-cmin",
-      "-readable", "-writable", "-executable",
-      "-maxdepth", "-mindepth",
-      "-not", "-and", "-or", "-a", "-o", "!",
-      "-follow", "-xdev", "-mount", "-daystart",
-      "-true", "-false", "-prune",
-    ]);
-
-    for (const t of tokens.slice(1)) {
-      if (t.startsWith("-") && !SAFE_FLAGS.has(t)) return;
-      if (t === "(" || t === ")" || t === "\\(" || t === "\\)") return;
-    }
-
-    const args = tokens.slice(1);
-    const paths: string[] = [];
-    for (const arg of args) {
-      if (arg.startsWith("-") || arg === "!" || arg === "(") break;
-      paths.push(arg);
     }
 
     if (paths.length === 0) {

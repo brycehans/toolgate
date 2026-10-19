@@ -35,6 +35,8 @@ import allowWebFetchClaude from "./allow-webfetch-claude";
 import allowTaskCrud from "./allow-task-crud";
 import allowGhReadOnly from "./allow-gh-read-only";
 import allowBashFind from "./allow-bash-find";
+import allowFindXargsRead from "./allow-find-xargs-read";
+import denyFindXargsWithoutNull from "./deny-find-xargs-without-null";
 import allowSuperpowersSkills from "./allow-superpowers-skills";
 import allowGitCheckIgnore from "./allow-git-check-ignore";
 import allowGitRevParse from "./allow-git-rev-parse";
@@ -96,6 +98,7 @@ export const builtinPolicies = [
   denyGhIssuePrDelete,
   denyWranglerPipes,
   redirectTrivialWranglerToRead,
+  denyFindXargsWithoutNull,
   denyAndChains,
   denyWebfetchExfil,
   allowBunTest,
@@ -117,6 +120,7 @@ export const builtinPolicies = [
   allowGhReadOnly,
   allowGhIssuePr,
   allowBashFind,
+  allowFindXargsRead,
   allowBashGrepInProject,
   allowSuperpowersSkills,
   allowGitCheckIgnore,
