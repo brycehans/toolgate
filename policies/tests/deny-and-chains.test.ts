@@ -36,6 +36,26 @@ describe("deny-and-chains", () => {
     }
   });
 
+  describe("denies ;-separated chains with steering", () => {
+    const cases = [
+      "cmd1 ; cmd2",
+      "ls /a ; ls /b",
+      "grep -c foo file1; grep -c bar file2",
+      "a && b; c",
+      // A line break is a statement separator too.
+      "cmd1\ncmd2",
+      "ls /a\nls /b",
+      "a && b\nc",
+    ];
+    for (const cmd of cases) {
+      it(`denies: ${cmd}`, async () => {
+        const r = await run(bash(cmd));
+        expect(r.verdict).toBe(DENY);
+        expect(r.reason).toMatch(/separate Bash call|atomically/);
+      });
+    }
+  });
+
   describe("exempts env-setter chains", () => {
     const cases = [
       'eval "$(fnm env)" && fnm use 25',
@@ -45,6 +65,8 @@ describe("deny-and-chains", () => {
       "export FOO=bar && cmd",
       "cmd && source .env",
       "cmd1 && eval \"$(fnm env)\" && cmd2",
+      "source .env; cmd",
+      "export FOO=bar; cmd",
     ];
     for (const cmd of cases) {
       it(`passes through: ${cmd}`, async () => {
@@ -71,11 +93,9 @@ describe("deny-and-chains", () => {
     }
   });
 
-  describe("out-of-scope separators (|| and ;) — not handled", () => {
+  describe("out-of-scope separators (||) — not handled", () => {
     const cases = [
       "cmd1 || cmd2",
-      "cmd1 ; cmd2",
-      "ls /a ; ls /b",
     ];
     for (const cmd of cases) {
       it(`passes through (intentional): ${cmd}`, async () => {

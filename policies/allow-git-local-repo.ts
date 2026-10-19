@@ -15,8 +15,11 @@ async function isLocalRepo(projectRoot: string): Promise<boolean> {
       stderr: "pipe",
     });
     const output = await new Response(proc.stdout).text();
-    await proc.exited;
-    const local = output.trim() === "";
+    const exitCode = await proc.exited;
+    // A directory that is not a repo at all fails on stderr with an empty
+    // stdout — indistinguishable from a repo with no remotes unless the exit
+    // code is checked, and treating it as local blanket-allows git there.
+    const local = exitCode === 0 && output.trim() === "";
     remoteCache.set(projectRoot, local);
     return local;
   } catch {
@@ -68,6 +71,11 @@ const allowGitLocalRepo: Policy = {
     const tokens = await safeBashCommand(call);
     if (!tokens) return;
     if (tokens[0] !== "git") return;
+
+    // `isDestructiveGit` reads tokens[1] as the subcommand, which a git global
+    // option would displace — see allow-non-destructive-git for why this fails
+    // closed instead of skipping past the flag.
+    if (!tokens[1] || tokens[1].startsWith("-")) return;
 
     const projectRoot = call.context.projectRoot;
     if (!projectRoot) return;

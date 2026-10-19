@@ -1,11 +1,16 @@
-import { describe, expect, it } from "bun:test";
+import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { homedir } from "node:os";
 import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowLs from "../allow-ls";
+import { setSafeDotPaths } from "../safe-dot-paths";
 
 const run = adaptHandler(allowLs.action!, allowLs.handler as any);
 
 const HOME = homedir();
+
+// The built-in default is empty; configs declare these via `safeDotPaths`.
+beforeAll(() => setSafeDotPaths(["~/.bun/install/global/node_modules", "~/.claude", "~/Dev/brain/.system"]));
+afterAll(() => setSafeDotPaths([]));
 const PROJECT = "/home/user/project";
 
 function bash(command: string, cwd = PROJECT, projectRoot: string | null = PROJECT): ToolCall {
@@ -55,8 +60,6 @@ describe("allow-ls", () => {
       "ls ./.next",
       "ls ~/.ssh",
       "ls ~/.aws/credentials.d",
-      `ls ${HOME}/.claude`,
-      `ls ${HOME}/.claude/plugins/marketplaces`,
       "ls /home/user/.gnupg",
       `ls ${PROJECT}/.git/refs`,
       "ls -la src/.cache nested",
@@ -68,6 +71,38 @@ describe("allow-ls", () => {
         expect(result.verdict).toBe(NEXT);
       });
     }
+  });
+
+  describe("allows ls into declared safe dot-paths", () => {
+    const allowed = [
+      `ls ${HOME}/.claude`,
+      `ls ${HOME}/.claude/plugins/marketplaces`,
+      "ls ~/.claude",
+      `ls ${HOME}/.bun/install/global/node_modules/@brycehanscomb/toolgate/src`,
+      `ls ${HOME}/Dev/brain/.system`,
+    ];
+
+    for (const cmd of allowed) {
+      it(`allows: ${cmd}`, async () => {
+        const result = await run(bash(cmd));
+        expect(result.verdict).toBe(ALLOW);
+      });
+    }
+
+    it("does not let a lookalike path borrow the allowlist entry", async () => {
+      const result = await run(bash(`ls ${HOME}/Dev/.claude`));
+      expect(result.verdict).toBe(NEXT);
+    });
+
+    it("matches on the resolved path, not the string, so a relative route in is allowed", async () => {
+      const result = await run(bash("ls ../.claude", `${HOME}/Dev`));
+      expect(result.verdict).toBe(ALLOW);
+    });
+
+    it("keeps a sibling of an allowlisted dir out", async () => {
+      const result = await run(bash(`ls ${HOME}/.bun/install/cache`));
+      expect(result.verdict).toBe(NEXT);
+    });
   });
 
   describe("allows ls regardless of cwd", () => {
@@ -102,25 +137,13 @@ describe("allow-ls", () => {
     }
   });
 
-  describe("allows ;-separated ls sequences", () => {
-    const allowed = [
-      "ls a; ls b",
-      "ls -la docs/screenshots/x.png 2>&1; ls -la x.png 2>&1",
-      "ls src; ls /etc; ls /tmp",
-      "ls -la | grep foo; ls bar",
-      "ls a;ls b",
-    ];
-
-    for (const cmd of allowed) {
-      it(`allows: ${cmd}`, async () => {
-        const result = await run(bash(cmd));
-        expect(result.verdict).toBe(ALLOW);
-      });
-    }
-  });
-
-  describe("rejects ;-sequences where any statement is not a safe ls", () => {
+  describe("leaves multi-statement sequences to Deny chained commands", () => {
+    // Even an all-ls sequence is denied before any allow runs, so this policy
+    // only ever judges a single statement.
     const rejected = [
+      "ls a; ls b",
+      "ls src; ls /etc; ls /tmp",
+      "ls a\nls b",
       "ls; echo pwned",
       "ls a; rm b",
       "ls a; ls .ssh",

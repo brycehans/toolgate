@@ -122,4 +122,15 @@ describe("allow-git-log", () => {
     const result = await run(call);
     expect(result.verdict).toBe(NEXT);
   });
+
+  describe("refuses --output, which writes past the redirect containment check", () => {
+    for (const cmd of [
+      "git log --output=/Users/me/.zshrc -p",
+      "git show --output /Users/me/.zshrc HEAD",
+    ]) {
+      it(`passes through: ${cmd}`, async () => {
+        expect((await run(bash(cmd))).verdict).toBe(NEXT);
+      });
+    }
+  });
 });

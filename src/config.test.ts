@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach, afterEach } from 'bun:test'
 import { findConfigInDir, findAllConfigs, loadConfigs } from './config'
-import { mkdtemp, rm, writeFile, mkdir } from 'fs/promises'
+import { hasUnsafeDotSegment, setSafeDotPaths } from '../policies/safe-dot-paths'
+import { mkdtemp, rm, writeFile, mkdir, symlink } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 
@@ -116,6 +117,35 @@ describe('findAllConfigs', () => {
     expect(findAllConfigs(child)).toEqual([parentConfig])
   })
 
+  it('dedupes a symlinked config against its real file, keeping the innermost', async () => {
+    // Real config in the child; parent's .claude/ holds a symlink to it — the
+    // "one file in the project, symlinked at $HOME level for global reach" setup.
+    const child = join(tempDir, 'child')
+    await mkdir(child)
+    const realConfig = join(child, 'toolgate.config.ts')
+    await writeFile(realConfig, 'export default []')
+
+    await mkdir(join(tempDir, '.claude'), { recursive: true })
+    await symlink(realConfig, join(tempDir, '.claude', 'toolgate.config.ts'))
+
+    expect(findAllConfigs(child)).toEqual([realConfig])
+  })
+
+  it('still finds a symlinked config when the walk never passes the real file', async () => {
+    const elsewhere = join(tempDir, 'elsewhere')
+    await mkdir(elsewhere)
+    const realConfig = join(elsewhere, 'toolgate.config.ts')
+    await writeFile(realConfig, 'export default []')
+
+    const linkPath = join(tempDir, 'toolgate.config.ts')
+    await symlink(realConfig, linkPath)
+
+    const child = join(tempDir, 'child')
+    await mkdir(child)
+
+    expect(findAllConfigs(child)).toEqual([linkPath])
+  })
+
   it('orders local before shared at each level when walking up', async () => {
     const parentShared = join(tempDir, 'toolgate.config.ts')
     const parentLocal = join(tempDir, 'toolgate.config.local.ts')
@@ -211,5 +241,49 @@ describe('loadConfigs', () => {
     await writeFile(join(tempDir, 'toolgate.config.ts'), 'export default []')
     const policies = await loadConfigs(tempDir)
     expect(policies.length).toBeGreaterThan(0)
+  })
+
+  describe('`safeDotPaths` export', () => {
+    afterEach(() => setSafeDotPaths([]))
+
+    it('collects entries from every config on the walk', async () => {
+      await writeFile(
+        join(tempDir, 'toolgate.config.ts'),
+        `export default []\nexport const safeDotPaths = ['~/.claude']`,
+      )
+      const child = join(tempDir, 'child')
+      await mkdir(child)
+      await writeFile(
+        join(child, 'toolgate.config.local.ts'),
+        `export default []\nexport const safeDotPaths = ['/opt/.cache']`,
+      )
+
+      await loadConfigs(child)
+      expect(hasUnsafeDotSegment('~/.claude', child)).toBe(false)
+      expect(hasUnsafeDotSegment('/opt/.cache/x', child)).toBe(false)
+      expect(hasUnsafeDotSegment('~/.ssh', child)).toBe(true)
+    })
+
+    it("resolves relative entries against the declaring config's directory", async () => {
+      await writeFile(
+        join(tempDir, 'toolgate.config.ts'),
+        `export default []\nexport const safeDotPaths = ['.notes']`,
+      )
+      const child = join(tempDir, 'child')
+      await mkdir(child)
+
+      await loadConfigs(child)
+      expect(hasUnsafeDotSegment(join(tempDir, '.notes', 'a.md'), child)).toBe(false)
+      // Not re-resolved against the cwd.
+      expect(hasUnsafeDotSegment(join(child, '.notes', 'a.md'), child)).toBe(true)
+    })
+
+    it('resets to empty when no config declares any', async () => {
+      setSafeDotPaths(['~/.claude'])
+      await writeFile(join(tempDir, 'toolgate.config.ts'), 'export default []')
+
+      await loadConfigs(tempDir)
+      expect(hasUnsafeDotSegment('~/.claude', tempDir)).toBe(true)
+    })
   })
 })

@@ -1,11 +1,16 @@
-import { describe, expect, it } from "bun:test";
+import { afterAll, beforeAll, describe, expect, it } from "bun:test";
 import { homedir } from "node:os";
 import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgate";
 import allowBashFind from "../allow-bash-find";
+import { setSafeDotPaths } from "../safe-dot-paths";
 
 const run = adaptHandler(allowBashFind.action!, allowBashFind.handler as any);
 
 const HOME = homedir();
+
+// The built-in default is empty; configs declare these via `safeDotPaths`.
+beforeAll(() => setSafeDotPaths(["~/.claude"]));
+afterAll(() => setSafeDotPaths([]));
 const PROJECT = `${HOME}/some-project`;
 
 function bash(command: string, cwd = PROJECT, projectRoot: string | null = PROJECT): ToolCall {
@@ -60,6 +65,29 @@ describe("allow-bash-find", () => {
         expect(result.verdict).toBe(NEXT);
       });
     }
+  });
+
+  describe("rejects find into undeclared dot-prefixed directories", () => {
+    const rejected = [
+      "find ~/.ssh",
+      "find ~/.ssh -type f",
+      `find ${HOME}/.aws`,
+      `find ${HOME}/.gnupg -name '*.gpg'`,
+      "find src/.cache",
+      `find ${PROJECT}/.git -name 'config'`,
+    ];
+
+    for (const cmd of rejected) {
+      it(`rejects: ${cmd}`, async () => {
+        const result = await run(bash(cmd));
+        expect(result.verdict).toBe(NEXT);
+      });
+    }
+
+    it("closes the gap that let find enumerate what ls is refused", async () => {
+      const result = await run(bash(`find ${HOME}/.ssh -type f`));
+      expect(result.verdict).toBe(NEXT);
+    });
   });
 
   describe("rejects bare find when cwd is outside $HOME", () => {

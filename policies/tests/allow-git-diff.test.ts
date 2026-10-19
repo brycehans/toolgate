@@ -53,6 +53,9 @@ describe("allow-git-diff", () => {
       "git status",
       "git log",
       "echo git diff",
+      // --output writes a file the redirect containment check never sees.
+      "git diff --output=/Users/me/.zshrc HEAD~1",
+      "git diff --output /Users/me/.zshrc",
     ];
 
     for (const cmd of rejected) {

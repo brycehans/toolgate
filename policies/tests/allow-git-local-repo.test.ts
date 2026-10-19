@@ -3,6 +3,7 @@ import { adaptHandler, ALLOW, NEXT, type ToolCall } from "@brycehanscomb/toolgat
 
 // Mock Bun.spawn to simulate `git remote` output
 let spawnOutput = "";
+let spawnExitCode = 0;
 const originalSpawn = Bun.spawn;
 
 function bash(command: string, projectRoot: string = "/tmp/local-repo"): ToolCall {
@@ -31,6 +32,7 @@ describe("allow-git-local-repo", () => {
 
     // Default: simulate local repo (no remotes)
     spawnOutput = "";
+    spawnExitCode = 0;
     // @ts-ignore
     Bun.spawn = (...args: any[]) => {
       const cmd = args[0] as string[];
@@ -38,7 +40,7 @@ describe("allow-git-local-repo", () => {
         return {
           stdout: new Response(spawnOutput).body,
           stderr: new Response("").body,
-          exited: Promise.resolve(0),
+          exited: Promise.resolve(spawnExitCode),
         };
       }
       return originalSpawn(...(args as Parameters<typeof originalSpawn>));
@@ -109,6 +111,25 @@ describe("allow-git-local-repo", () => {
     }
   });
 
+  describe("refuses anything whose subcommand it cannot identify", () => {
+    // `isDestructiveGit` reads tokens[1] as the subcommand, so a git global
+    // option in that slot would hide the real one and hand back "not
+    // destructive" for commands that are.
+    const blocked = [
+      "git --no-pager reset --hard HEAD~50",
+      "git -c diff.external=/usr/bin/whoami diff HEAD~1",
+      "git --git-dir=/etc/other clean -fd",
+    ];
+
+    for (const cmd of blocked) {
+      it(`passes through: ${cmd}`, async () => {
+        const root = `/tmp/local-globalflag-${callCount++}`;
+        const result = await run(bash(cmd, root));
+        expect(result.verdict).toBe(NEXT);
+      });
+    }
+  });
+
   describe("allows safe restore variants", () => {
     it("allows git restore --staged", async () => {
       const root = `/tmp/local-staged-${callCount++}`;
@@ -129,6 +150,26 @@ describe("allow-git-local-repo", () => {
       spawnOutput = "origin\nupstream\n";
       const root = `/tmp/multi-remote-${callCount++}`;
       const result = await run(bash("git push", root));
+      expect(result.verdict).toBe(NEXT);
+    });
+  });
+
+  describe("passes through when projectRoot is not a repo at all", () => {
+    // `git remote` in a non-repo exits 128 and writes to stderr, leaving stdout
+    // empty — the same stdout a local repo with no remotes produces. Trusting
+    // stdout alone hands every git command a blanket allow from any directory
+    // that merely contains repos, e.g. a projects root.
+    it("does not allow git push when git remote fails", async () => {
+      spawnExitCode = 128;
+      const root = `/tmp/not-a-repo-${callCount++}`;
+      const result = await run(bash("git push", root));
+      expect(result.verdict).toBe(NEXT);
+    });
+
+    it("does not allow git commit when git remote fails", async () => {
+      spawnExitCode = 128;
+      const root = `/tmp/not-a-repo-${callCount++}`;
+      const result = await run(bash("git commit -m 'test'", root));
       expect(result.verdict).toBe(NEXT);
     });
   });

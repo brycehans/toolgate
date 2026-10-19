@@ -1,12 +1,13 @@
 import { resolve } from "node:path";
 import type { Policy } from "../src";
 import { parseShell, getPipelineCommands, getArgs, isSafeFilter } from "./parse-bash-ast";
+import { hasUnsafeDotSegment } from "./safe-dot-paths";
 
 const GREP_COMMANDS = new Set(["grep", "egrep", "fgrep", "rg"]);
 
 const allowBashGrepInProject: Policy = {
   name: "Allow bash grep in project",
-  description: "Permits grep/egrep/fgrep/rg commands when all paths are within the project root",
+  description: "Permits grep/egrep/fgrep/rg commands when all paths are within the project root and clear of undeclared dot-prefixed directories",
   action: "allow",
   handler: async (call) => {
     if (call.tool !== "Bash") return;
@@ -68,6 +69,11 @@ const allowBashGrepInProject: Policy = {
       }
       return;
     }
+
+    // Containment alone isn't enough: grep prints file *contents*, so an
+    // in-project dot-dir (`.env`, `.git`, `brain/.system`) would otherwise leak
+    // what `cat` is refused.
+    if (paths.some((p) => hasUnsafeDotSegment(p, call.context.cwd))) return;
 
     const allInProject = paths.every((p) => {
       const resolved = resolve(call.context.cwd, p);

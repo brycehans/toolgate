@@ -1,6 +1,7 @@
 import denyGitAddAndCommit from "./deny-git-add-and-commit";
 import denyWritesOutsideProject from "./deny-writes-outside-project";
 import denyGitDashC from "./deny-git-dash-c";
+import denyGitOutputFlag from "./deny-git-output-flag";
 import allowBashGrepInProject from "./allow-bash-grep-in-project";
 import denyCdChained from "./deny-cd-chained";
 import denyGitChained from "./deny-git-chained";
@@ -18,7 +19,9 @@ import redirectPlansToProject from "./redirect-plans-to-project";
 import allowBunTest from "./allow-bun-test";
 import allowGitAdd from "./allow-git-add";
 import allowGitDiff from "./allow-git-diff";
+import allowGitFetch from "./allow-git-fetch";
 import allowGitLog from "./allow-git-log";
+import allowGitReadToFile from "./allow-git-read-to-file";
 import allowGitStatus from "./allow-git-status";
 import allowGrepInProject from "./allow-grep-in-project";
 import allowLs from "./allow-ls";
@@ -32,6 +35,8 @@ import allowWebFetchClaude from "./allow-webfetch-claude";
 import allowTaskCrud from "./allow-task-crud";
 import allowGhReadOnly from "./allow-gh-read-only";
 import allowBashFind from "./allow-bash-find";
+import allowFindXargsRead from "./allow-find-xargs-read";
+import denyFindXargsWithoutNull from "./deny-find-xargs-without-null";
 import allowSuperpowersSkills from "./allow-superpowers-skills";
 import allowGitCheckIgnore from "./allow-git-check-ignore";
 import allowGitRevParse from "./allow-git-rev-parse";
@@ -68,9 +73,12 @@ import allowWhich from "./allow-which";
 import allowVersionProbes from "./allow-version-probes";
 import allowDate from "./allow-date";
 import allowNonDestructiveGit from "./allow-non-destructive-git";
+import allowGitDirFlag from "./allow-git-dir-flag";
 import allowGhIssuePr from "./allow-gh-issue-pr";
 import allowAwsCli from "./allow-aws-cli";
 import allowBrew from "./allow-brew";
+import allowToolgateList from "./allow-toolgate-list";
+import allowToolgateLogs from "./allow-toolgate-logs";
 import allowToolgateTest from "./allow-toolgate-test";
 import allowMemoryCrud from "./allow-memory-crud";
 
@@ -80,6 +88,7 @@ export const builtinPolicies = [
   redirectPythonJsonToFx,
   denyWritesOutsideProject,
   denyGitDashC,
+  denyGitOutputFlag,
   denyCdChained,
   denyGitChained,
   denyGhHeredoc,
@@ -89,12 +98,14 @@ export const builtinPolicies = [
   denyGhIssuePrDelete,
   denyWranglerPipes,
   redirectTrivialWranglerToRead,
+  denyFindXargsWithoutNull,
   denyAndChains,
   denyWebfetchExfil,
   allowBunTest,
   allowGitAdd,
   allowGitDiff,
   allowGitLog,
+  allowGitReadToFile,
   allowGitStatus,
   allowGrepInProject,
   allowLs,
@@ -109,6 +120,7 @@ export const builtinPolicies = [
   allowGhReadOnly,
   allowGhIssuePr,
   allowBashFind,
+  allowFindXargsRead,
   allowBashGrepInProject,
   allowSuperpowersSkills,
   allowGitCheckIgnore,
@@ -119,6 +131,7 @@ export const builtinPolicies = [
   allowGitCheckoutB,
   allowGitCommit,
   allowGitStash,
+  allowGitFetch,
   allowGitLocalRepo,
   allowSafeReadCommands,
   allowPureAndChains,
@@ -146,8 +159,11 @@ export const builtinPolicies = [
   allowVersionProbes,
   allowDate,
   allowNonDestructiveGit,
+  allowGitDirFlag,
   allowAwsCli,
   allowBrew,
+  allowToolgateList,
+  allowToolgateLogs,
   allowToolgateTest,
   allowMemoryCrud,
 ];

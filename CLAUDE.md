@@ -58,6 +58,18 @@ export const disable = ['Deny bash grep']
 
 Names must match the `name` field on the target `Policy` exactly. Unknown names are silently ignored.
 
+### Safe Dot-Paths
+
+The read policies (`allow-ls`, `allow-bash-find`, `allow-bash-grep-in-project`, `allow-safe-read-commands`) refuse any path with a dot-prefixed segment (`~/.ssh`, `.env`, `.git/config`). A config can exempt specific dot-prefixed trees via a named `safeDotPaths` export:
+
+```ts
+// ~/.claude/toolgate.config.local.ts
+export default []
+export const safeDotPaths = ['~/.claude', '~/.bun/install/global/node_modules']
+```
+
+Entries accumulate across every config on the walk. Absolute, `~` and `$HOME` entries are used as-is; relative entries resolve against the declaring config's directory. The built-in default is empty — these are machine-specific, so they belong in personal configs.
+
 Use `toolgate disable` to interactively toggle policies on/off, or `toolgate disable --json` to dump the full policy state (names, sources, disable status) for debugging.
 
 ### Adding/Renaming Policies
