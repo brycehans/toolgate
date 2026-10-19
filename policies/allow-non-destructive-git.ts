@@ -1,5 +1,6 @@
 import type { Policy } from "../src";
 import { safeBashCommandOrPipeline } from "./parse-bash-ast";
+import { isGitOutputFlag } from "./deny-git-output-flag";
 
 /**
  * Git subcommands that only read repository state. Everything NOT in this set
@@ -39,6 +40,12 @@ const READ_ONLY_REMOTE_ARGS = new Set(["-v", "--verbose", "show", "get-url"]);
 
 /** Uses of a read-only subcommand that are not, in fact, read-only. */
 export function isUnsafeUse(sub: string, rest: string[]): boolean {
+  // `--output=<file>` makes show/log/diff write a file the redirect
+  // containment check never sees. deny-git-output-flag already blocks it;
+  // checking here too keeps every allow built on this helper safe if that
+  // deny is disabled.
+  if (rest.some(isGitOutputFlag)) return true;
+
   // `git grep -O<cmd>` runs <cmd> on every matched file — the same arbitrary
   // execution escape as `-c diff.external`, and it needs no TTY.
   if (sub === "grep") {

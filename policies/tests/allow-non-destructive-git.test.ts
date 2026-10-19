@@ -184,4 +184,16 @@ describe("allow-non-destructive-git", () => {
     const result = await run(call);
     expect(result.verdict).toBe(NEXT);
   });
+
+  describe("refuses --output even without the deny layer", () => {
+    for (const cmd of [
+      "git diff --output=/Users/me/.zshrc HEAD~1",
+      "git show --output /Users/me/.zshrc HEAD",
+      "git log --output=/Users/me/.zshrc -p",
+    ]) {
+      it(`passes through: ${cmd}`, async () => {
+        expect((await run(bash(cmd))).verdict).toBe(NEXT);
+      });
+    }
+  });
 });

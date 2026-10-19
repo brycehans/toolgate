@@ -23,6 +23,17 @@ describe("deny-git-output-flag", () => {
       "git diff --output=/Users/me/.zshrc HEAD~1",
       "git log --output=/Users/me/.zshrc -p",
       "git   show   --output=/etc/hosts   HEAD",
+      // Quoting and escaping are invisible to a text match but stripped by the
+      // shell before git sees the flag.
+      `git diff "--output=/Users/me/.zshrc" HEAD~1`,
+      `git diff '--output' /Users/me/.zshrc HEAD~1`,
+      String.raw`git diff \--output=/Users/me/.zshrc HEAD~1`,
+      `git diff --out"put"=/Users/me/.zshrc HEAD~1`,
+      // No constant value, but the literal prefix still names the flag.
+      `git diff "--output=$HOME/.zshrc" HEAD~1`,
+      // git reached through a wrapper or nested in a subshell.
+      `env git diff --output=/Users/me/.zshrc`,
+      `(git diff --output=/Users/me/.zshrc)`,
     ];
 
     for (const cmd of denied) {
@@ -63,6 +74,8 @@ describe("deny-git-output-flag", () => {
       "git show FETCH_HEAD:src/app.ts > ./tmp/app.ts",
       "git log --oneline -20",
       "git diff HEAD~1",
+      // The flag's name in a message is just text, not an argument to git.
+      `git commit -m "document the --output flag"`,
     ];
 
     for (const cmd of allowed) {

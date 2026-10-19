@@ -1,5 +1,6 @@
 import type { Policy } from "../src";
 import { Op, getArgs, hasUnsafeNodes, parseShell, wordToString } from "./parse-bash-ast";
+import { isGitOutputFlag } from "./deny-git-output-flag";
 
 const READ_SUBCOMMANDS = new Set(["show", "log", "diff"]);
 
@@ -38,6 +39,7 @@ const allowGitReadToFile: Policy = {
     const tokens = getArgs(stmt);
     if (!tokens || tokens[0] !== "git") return;
     if (!tokens[1] || !READ_SUBCOMMANDS.has(tokens[1])) return;
+    if (tokens.slice(2).some(isGitOutputFlag)) return;
 
     const redirs = stmt.Redirs ?? [];
     if (redirs.length === 0) return;
