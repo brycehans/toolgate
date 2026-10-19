@@ -27,6 +27,7 @@ const allowGitFetch: Policy = {
     if (!tokens) return;
     if (tokens[0] !== "git" || tokens[1] !== "fetch") return;
 
+    let positional = 0;
     for (const arg of tokens.slice(2)) {
       if (arg.startsWith("-")) {
         if (!SAFE_FLAGS.has(arg)) return;
@@ -37,6 +38,11 @@ const allowGitFetch: Policy = {
       // are lost. A ':' also appears in scp-style remote URLs, which this refuses
       // for the same reason as '://': only a configured remote is in scope here.
       if (arg.includes(":") || arg.startsWith("+")) return;
+      // The first positional is the remote. A local path (`../other`, `/abs`,
+      // `~/x`) carries no ':' but is just as unnamed. Later positionals are
+      // refspecs, where a '/' in a branch name like `feature/x` is ordinary.
+      if (positional === 0 && /^[./~]/.test(arg)) return;
+      positional++;
     }
 
     return true;

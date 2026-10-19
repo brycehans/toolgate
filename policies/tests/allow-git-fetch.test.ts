@@ -25,6 +25,9 @@ describe("allow-git-fetch", () => {
       "git fetch --prune origin",
       "git fetch --tags origin",
       "git fetch origin master 2>&1 | tail -20",
+      // A '/' in a branch name past the remote is not a path.
+      "git fetch origin feature/x",
+      "git fetch --prune origin release/2.x",
     ];
 
     for (const cmd of allowed) {
@@ -56,6 +59,12 @@ describe("allow-git-fetch", () => {
     const passed = [
       "git fetch https://example.com/x.git",
       "git fetch git@example.com:org/repo.git",
+      // Local paths carry no ':' but are just as unnamed.
+      "git fetch ../other-repo",
+      "git fetch ./vendor/lib main",
+      "git fetch /Users/me/Dump share/toolgate-wip",
+      "git fetch ~/Dump",
+      "git fetch --quiet ../other-repo",
     ];
 
     for (const cmd of passed) {
